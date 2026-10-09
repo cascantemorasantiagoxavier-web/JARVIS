@@ -1,0 +1,3 @@
+package com.example.jarvis.ai.orchestrator
+
+typealias JarvisVoiceOrchestratorServiceAlias = JarvisVoiceOrchestratorService

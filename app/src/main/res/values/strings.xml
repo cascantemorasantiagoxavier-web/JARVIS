@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">JARVIS</string>
+    <string name="accessibility_service_description">JARVIS Accessibility Service para automatización y control de interfaz asistido por IA.</string>
+</resources>
