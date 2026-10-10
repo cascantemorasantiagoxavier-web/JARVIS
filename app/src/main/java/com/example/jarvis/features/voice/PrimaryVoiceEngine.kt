@@ -44,25 +44,38 @@ class PrimaryVoiceEngine(
                 }
             }
 
-            tts?.setPitch(0.92f)
-            tts?.setSpeechRate(0.98f)
+            tts?.setPitch(0.85f) // Deep technological pitch
+            tts?.setSpeechRate(0.98f) // Natural speech rate
 
             try {
                 val voices = tts?.voices
                 if (voices != null) {
-                    val maleVoice = voices.firstOrNull { v ->
-                        v.locale.language == "es" &&
-                        (v.name.contains("male", ignoreCase = true) || v.name.contains("es-es-x", ignoreCase = true) || v.name.contains("es-us-x", ignoreCase = true)) &&
-                        !v.name.contains("female", ignoreCase = true)
+                    val spanishVoices = voices.filter { it.locale.language == "es" }
+                    Log.i("JARVIS", "[JARVIS][VOICE] Installed Spanish voices count: ${spanishVoices.size}")
+                    spanishVoices.forEach { v ->
+                        Log.i("JARVIS", "[JARVIS][VOICE]   - Voice: ${v.name} (locale: ${v.locale}, features: ${v.features})")
                     }
-                    if (maleVoice != null) {
-                        tts?.voice = maleVoice
-                        Log.i("JARVIS", "[JARVIS][VOICE] Selected primary male voice: ${maleVoice.name}")
-                    } else {
-                        Log.i("JARVIS", "[JARVIS][VOICE] Specific male voice tag not found by system; using default Spanish voice.")
+
+                    // Strict objective selection: look for explicit male tag in name or features without female indicators
+                    val explicitMaleVoice = spanishVoices.firstOrNull { v ->
+                        val lowerName = v.name.lowercase()
+                        val hasMaleTag = lowerName.contains("male") || lowerName.contains("hombre") || v.features.contains("male")
+                        val hasFemaleTag = lowerName.contains("female") || lowerName.contains("mujer") || v.features.contains("female")
+                        hasMaleTag && !hasFemaleTag
+                    }
+
+                    if (explicitMaleVoice != null) {
+                        tts?.voice = explicitMaleVoice
+                        Log.i("JARVIS", "[JARVIS][VOICE] Explicitly selected male Spanish voice: ${explicitMaleVoice.name}")
+                    } else if (spanishVoices.isNotEmpty()) {
+                        val fallbackVoice = spanishVoices.first()
+                        tts?.voice = fallbackVoice
+                        Log.i("JARVIS", "[JARVIS][VOICE] No explicit male tag in Spanish voices. Selected available Spanish voice '${fallbackVoice.name}'. Install Google Speech Services male voice in Android Settings if needed.")
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e("JARVIS", "[JARVIS][VOICE] Error inspecting/setting Spanish voice: ${e.message}")
+            }
 
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
@@ -142,7 +155,13 @@ class PrimaryVoiceEngine(
     override fun stop() {
         try {
             tts?.stop()
-        } catch (_: Exception) {}
+            activeOnStart = null
+            activeOnDone = null
+            activeOnError = null
+            Log.i("JARVIS", "[JARVIS][VOICE] Primary VoiceEngine stopped and queue cleared")
+        } catch (e: Exception) {
+            Log.e("JARVIS", "[JARVIS][VOICE] Error stopping Primary VoiceEngine: ${e.message}")
+        }
     }
 
     override fun shutdown() {

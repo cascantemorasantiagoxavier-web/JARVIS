@@ -25,15 +25,15 @@ class DefaultAgentSelector(
 ) : AgentSelector {
     override suspend fun selectAgent(intent: DetectedIntent, request: OrchestratorRequest): AgentSelection {
         val agentId = when (intent.type) {
-            IntentType.CODING -> "coding_agent"
+            IntentType.CODING, IntentType.CODE_ASSISTANCE -> "coding_agent"
             IntentType.DEVICE, IntentType.OPEN_APP, IntentType.OPEN_SETTINGS, IntentType.DEVICE_INFO,
             IntentType.IOT, IntentType.MAPS, IntentType.CONTACT_SEARCH, IntentType.WEB_SEARCH, IntentType.OPEN_WEB, IntentType.DEVICE_CONTROL,
-            IntentType.DATE_TIME_QUERY, IntentType.CALCULATOR_QUERY, IntentType.BATTERY_QUERY, IntentType.NETWORK_QUERY -> "device_agent"
+            IntentType.DATE_TIME_QUERY, IntentType.CALCULATOR_QUERY, IntentType.BATTERY_QUERY, IntentType.NETWORK_QUERY, IntentType.DIAGNOSTIC_TOOL -> "device_agent"
             IntentType.MEMORY, IntentType.MEMORY_QUERY, IntentType.MEMORY_WRITE, IntentType.MEMORY_SAVE, IntentType.MEMORY_DELETE, IntentType.PREFERENCE_UPDATE -> "memory_agent"
             IntentType.OBSIDIAN, IntentType.OBSIDIAN_SEARCH, IntentType.OBSIDIAN_READ, IntentType.OBSIDIAN_WRITE -> "obsidian_agent"
-            IntentType.PLANNING -> "planning_agent"
-            IntentType.PRODUCTIVITY, IntentType.TASK_CREATE, IntentType.TASK_UPDATE, IntentType.TASK_LIST, IntentType.TASK_COMPLETE, IntentType.PROJECT_QUERY, IntentType.DAILY_BRIEFING -> "productivity_agent"
-            IntentType.RESEARCH, IntentType.QUESTION -> "research_agent"
+            IntentType.PLANNING, IntentType.WORKFLOW_AUTOMATION, IntentType.SCRIPT_STUDIO, IntentType.APP_BUILDER -> "planning_agent"
+            IntentType.PRODUCTIVITY, IntentType.TASK_CREATE, IntentType.TASK_UPDATE, IntentType.TASK_LIST, IntentType.TASK_COMPLETE, IntentType.BUSINESS_PROSPECT, IntentType.IMPORT_RESEARCH, IntentType.PROJECT_QUERY, IntentType.DAILY_BRIEFING, IntentType.SUPPLIER_COMPARISON, IntentType.FINANCIAL_CALC, IntentType.LOGISTICS_CALCULATOR, IntentType.DATA_ANALYTICS, IntentType.BUSINESS_SYSTEM_BUILDER, IntentType.PRODUCT_CATALOG, IntentType.INVENTORY_CONTROL, IntentType.SALES_POS, IntentType.BUSINESS_DASHBOARD -> "productivity_agent"
+            IntentType.RESEARCH, IntentType.QUESTION, IntentType.MARKET_ANALYSIS, IntentType.IMAGE_GENERATION, IntentType.IMAGE_ANALYSIS -> "research_agent"
             IntentType.YOUTUBE_SHORTS -> "orchestrator_agent"
             IntentType.CONVERSATION, IntentType.GENERAL, IntentType.UNKNOWN -> "orchestrator_agent"
         }
@@ -77,6 +77,26 @@ class DefaultToolSelector(
             IntentType.PRODUCTIVITY, IntentType.TASK_CREATE, IntentType.TASK_UPDATE, IntentType.PROJECT_QUERY -> "task_create"
             IntentType.TASK_LIST -> "task_list"
             IntentType.TASK_COMPLETE -> "task_complete"
+            IntentType.BUSINESS_PROSPECT -> "business_prospect"
+            IntentType.IMPORT_RESEARCH -> "import_research"
+            IntentType.DIAGNOSTIC_TOOL -> "diagnostic_tool"
+            IntentType.SUPPLIER_COMPARISON -> "supplier_comparison"
+            IntentType.MARKET_ANALYSIS -> "market_analysis"
+            IntentType.FINANCIAL_CALC -> "financial_calc"
+            IntentType.LOGISTICS_CALCULATOR -> "logistics_calculator"
+            IntentType.DATA_ANALYTICS -> "data_analytics"
+            IntentType.WORKFLOW_AUTOMATION -> "workflow_automation"
+            IntentType.SCRIPT_STUDIO -> "script_studio"
+            IntentType.APP_BUILDER -> "app_builder"
+            IntentType.IMAGE_GENERATION -> "image_generation"
+            IntentType.IMAGE_ANALYSIS -> "image_analysis"
+            IntentType.CODE_ASSISTANCE -> "code_assistance"
+            IntentType.CODING -> "code_assistance"
+            IntentType.BUSINESS_SYSTEM_BUILDER -> "business_system_builder"
+            IntentType.PRODUCT_CATALOG -> "product_catalog"
+            IntentType.INVENTORY_CONTROL -> "inventory_control"
+            IntentType.SALES_POS -> "sales_pos"
+            IntentType.BUSINESS_DASHBOARD -> "business_dashboard"
             IntentType.OBSIDIAN, IntentType.OBSIDIAN_SEARCH, IntentType.OBSIDIAN_READ, IntentType.OBSIDIAN_WRITE -> "obsidian_search"
             IntentType.IOT -> "iot_tool"
             IntentType.MAPS -> "maps_tool"
@@ -115,7 +135,12 @@ class DefaultToolSelector(
                 "settingType" to request.input,
                 "type" to request.input,
                 "url" to request.input,
-                "name" to request.input
+                "name" to request.input,
+                "product" to request.input,
+                "idea" to request.input,
+                "prompt" to request.input,
+                "code" to request.input,
+                "business" to request.input
             ),
             targetTool = tool
         )

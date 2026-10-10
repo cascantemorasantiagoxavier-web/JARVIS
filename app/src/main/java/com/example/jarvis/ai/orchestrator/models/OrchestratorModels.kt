@@ -19,6 +19,25 @@ enum class IntentType {
     TASK_UPDATE,
     TASK_LIST,
     TASK_COMPLETE,
+    BUSINESS_PROSPECT,
+    IMPORT_RESEARCH,
+    DIAGNOSTIC_TOOL,
+    SUPPLIER_COMPARISON,
+    MARKET_ANALYSIS,
+    FINANCIAL_CALC,
+    LOGISTICS_CALCULATOR,
+    DATA_ANALYTICS,
+    WORKFLOW_AUTOMATION,
+    SCRIPT_STUDIO,
+    APP_BUILDER,
+    IMAGE_GENERATION,
+    IMAGE_ANALYSIS,
+    CODE_ASSISTANCE,
+    BUSINESS_SYSTEM_BUILDER,
+    PRODUCT_CATALOG,
+    INVENTORY_CONTROL,
+    SALES_POS,
+    BUSINESS_DASHBOARD,
     MEMORY_QUERY,
     MEMORY_WRITE,
     OBSIDIAN_SEARCH,
@@ -54,12 +73,30 @@ enum class IntentType {
         fun fromString(value: String): IntentType {
             val upper = value.uppercase().trim()
             return entries.firstOrNull { it.name == upper } ?: when (upper) {
-                "CODE", "KOTLIN" -> CODING
+                "CODE", "KOTLIN", "CODE_ASSISTANCE" -> CODE_ASSISTANCE
                 "SETTINGS", "AJUSTES" -> OPEN_SETTINGS
                 "APP", "LAUNCH" -> OPEN_APP
                 "TASK", "TODO" -> TASK_CREATE
                 "TASKS", "LIST_TASKS" -> TASK_LIST
                 "COMPLETE_TASK", "DONE" -> TASK_COMPLETE
+                "PROSPECT", "PROSPECTS", "BUSINESS" -> BUSINESS_PROSPECT
+                "IMPORT", "IMPORTATION", "IMPORT_RESEARCH" -> IMPORT_RESEARCH
+                "DIAGNOSTIC", "HEALTH" -> DIAGNOSTIC_TOOL
+                "COMPARE_SUPPLIERS", "SUPPLIERS" -> SUPPLIER_COMPARISON
+                "MARKET", "ANALYSIS" -> MARKET_ANALYSIS
+                "FINANCIAL", "MARGIN" -> FINANCIAL_CALC
+                "LOGISTICS", "FREIGHT" -> LOGISTICS_CALCULATOR
+                "ANALYTICS", "STATS" -> DATA_ANALYTICS
+                "WORKFLOW", "AUTOMATION" -> WORKFLOW_AUTOMATION
+                "SCRIPT", "STUDIO", "SCRIPT_STUDIO", "GUION" -> SCRIPT_STUDIO
+                "BUILDER", "APP_BUILDER", "CREAME UNA APLICACION" -> APP_BUILDER
+                "IMAGE", "IMAGE_GENERATION", "GENERA UNA IMAGEN" -> IMAGE_GENERATION
+                "OCR", "IMAGE_ANALYSIS", "ANALIZA ESTA IMAGEN" -> IMAGE_ANALYSIS
+                "BUSINESS_SYSTEM", "BUSINESS_SYSTEM_BUILDER" -> BUSINESS_SYSTEM_BUILDER
+                "CATALOG", "PRODUCT_CATALOG" -> PRODUCT_CATALOG
+                "INVENTORY", "INVENTORY_CONTROL" -> INVENTORY_CONTROL
+                "POS", "SALES_POS", "VENDER" -> SALES_POS
+                "DASHBOARD", "BUSINESS_DASHBOARD", "KPIS" -> BUSINESS_DASHBOARD
                 "NOTE", "VAULT" -> OBSIDIAN_SEARCH
                 "REMEMBER", "RECALL" -> MEMORY_QUERY
                 "SHORT", "SHORTS" -> YOUTUBE_SHORTS

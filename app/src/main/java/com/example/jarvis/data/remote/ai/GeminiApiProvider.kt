@@ -8,6 +8,7 @@ import com.example.jarvis.domain.ai.AiSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -90,8 +91,12 @@ class GeminiApiProvider : AiProvider {
 
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     val responseStr = connection.inputStream.bufferedReader().use { it.readText() }
-                    val contentMatch = "\"content\"\\s*:\\s*\"([^\"]*)\"".toRegex().find(responseStr)
-                    val content = contentMatch?.groupValues?.get(1)?.let { JsonUtils.unescape(it) } ?: ""
+                    val jsonObj = try { JSONObject(responseStr) } catch (_: Exception) { null }
+                    val content = jsonObj?.optString("content", "")?.ifBlank {
+                        val contentMatch = "\"content\"\\s*:\\s*\"([^\"]*)\"".toRegex().find(responseStr)
+                        contentMatch?.groupValues?.get(1)?.let { JsonUtils.unescape(it) } ?: ""
+                    } ?: ""
+
                     Log.i("JARVIS", "[JARVIS][GEMINI] RESPONSE_RECEIVED=true length=${content.length}")
 
                     if (content.isNotBlank()) {
@@ -111,11 +116,13 @@ class GeminiApiProvider : AiProvider {
                         continue
                     }
 
-                    val formattedMsg = when (responseCode) {
-                        404 -> "EL GATEWAY DE PRODUCCIÓN NO ESTÁ DISPONIBLE / NO ESTÁ DESPLEGADO CORRECTAMENTE (HTTP 404 en $cleanBaseUrl/api/gemini/chat). Por favor, verifica la URL en Ajustes o despliega el backend."
-                        429 -> "El servicio de Google Gemini reporta alta demanda temporal."
-                        503 -> "Google Gemini está experimentando alta demanda. Inténtalo de nuevo."
-                        401, 403 -> "Error de autenticación con el servicio de IA."
+                    val formattedMsg = when {
+                        errorStream.contains("GEMINI_API_KEY", true) || (responseCode == 500 && errorStream.contains("SERVER_CONFIG_ERROR", true)) ->
+                            "Configuración pendiente: Agrega la variable GEMINI_API_KEY en el panel Environment Variables de Render.com."
+                        responseCode == 404 -> "EL GATEWAY DE PRODUCCIÓN NO ESTÁ DISPONIBLE / NO ESTÁ DESPLEGADO CORRECTAMENTE (HTTP 404 en $cleanBaseUrl/api/gemini/chat)."
+                        responseCode == 429 -> "El servicio de Google Gemini reporta alta demanda temporal."
+                        responseCode == 503 -> "Google Gemini está experimentando alta demanda. Inténtalo de nuevo."
+                        responseCode == 401 || responseCode == 403 -> "Error de autenticación con el servicio de IA."
                         else -> "No tengo conexión a Internet en este momento, jefe."
                     }
                     return@withContext Result.failure(Exception(formattedMsg))

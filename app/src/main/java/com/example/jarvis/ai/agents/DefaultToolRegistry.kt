@@ -13,6 +13,25 @@ class DefaultToolRegistry : ToolRegistry {
         registerTool(TaskCreateTool())
         registerTool(TaskListTool())
         registerTool(TaskCompleteTool())
+        registerTool(BusinessProspectTool())
+        registerTool(ImportResearchTool())
+        registerTool(DiagnosticTool())
+        registerTool(SupplierComparisonTool())
+        registerTool(MarketAnalysisTool())
+        registerTool(FinancialCalcTool())
+        registerTool(LogisticsCalculatorTool())
+        registerTool(DataAnalyticsTool())
+        registerTool(WorkflowAutomationTool())
+        registerTool(ScriptStudioTool())
+        registerTool(AppBuilderTool())
+        registerTool(ImageGenerationTool())
+        registerTool(ImageAnalysisTool())
+        registerTool(CodeAssistanceTool())
+        registerTool(BusinessSystemBuilderTool())
+        registerTool(ProductCatalogTool())
+        registerTool(InventoryControlTool())
+        registerTool(SalesPosTool())
+        registerTool(BusinessDashboardTool())
         registerTool(ObsidianSearchTool())
         registerTool(OpenSettingsTool())
         registerTool(GetDeviceInfoTool())
@@ -82,6 +101,101 @@ class DefaultToolRegistry : ToolRegistry {
                 }
                 "task_complete" -> {
                     val t = TaskCompleteTool()
+                    registerTool(t)
+                    return t
+                }
+                "business_prospect" -> {
+                    val t = BusinessProspectTool()
+                    registerTool(t)
+                    return t
+                }
+                "import_research" -> {
+                    val t = ImportResearchTool()
+                    registerTool(t)
+                    return t
+                }
+                "diagnostic_tool" -> {
+                    val t = DiagnosticTool()
+                    registerTool(t)
+                    return t
+                }
+                "supplier_comparison" -> {
+                    val t = SupplierComparisonTool()
+                    registerTool(t)
+                    return t
+                }
+                "market_analysis" -> {
+                    val t = MarketAnalysisTool()
+                    registerTool(t)
+                    return t
+                }
+                "financial_calc" -> {
+                    val t = FinancialCalcTool()
+                    registerTool(t)
+                    return t
+                }
+                "logistics_calculator" -> {
+                    val t = LogisticsCalculatorTool()
+                    registerTool(t)
+                    return t
+                }
+                "data_analytics" -> {
+                    val t = DataAnalyticsTool()
+                    registerTool(t)
+                    return t
+                }
+                "workflow_automation" -> {
+                    val t = WorkflowAutomationTool()
+                    registerTool(t)
+                    return t
+                }
+                "script_studio" -> {
+                    val t = ScriptStudioTool()
+                    registerTool(t)
+                    return t
+                }
+                "app_builder" -> {
+                    val t = AppBuilderTool()
+                    registerTool(t)
+                    return t
+                }
+                "image_generation" -> {
+                    val t = ImageGenerationTool()
+                    registerTool(t)
+                    return t
+                }
+                "image_analysis" -> {
+                    val t = ImageAnalysisTool()
+                    registerTool(t)
+                    return t
+                }
+                "code_assistance" -> {
+                    val t = CodeAssistanceTool()
+                    registerTool(t)
+                    return t
+                }
+                "business_system_builder" -> {
+                    val t = BusinessSystemBuilderTool()
+                    registerTool(t)
+                    return t
+                }
+                "product_catalog" -> {
+                    val t = ProductCatalogTool()
+                    registerTool(t)
+                    return t
+                }
+                "inventory_control" -> {
+                    val t = InventoryControlTool()
+                    registerTool(t)
+                    return t
+                }
+                "sales_pos" -> {
+                    val t = SalesPosTool()
+                    registerTool(t)
+                    return t
+                }
+                "business_dashboard" -> {
+                    val t = BusinessDashboardTool()
                     registerTool(t)
                     return t
                 }

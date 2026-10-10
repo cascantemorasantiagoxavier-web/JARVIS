@@ -33,7 +33,14 @@ class AndroidFallbackVoiceEngine(
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            fallbackTts?.setLanguage(Locale.Builder().setLanguage("es").build())
+            val locale = Locale.Builder().setLanguage("es").setRegion("ES").build()
+            val result = fallbackTts?.setLanguage(locale)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                fallbackTts?.setLanguage(Locale.Builder().setLanguage("es").build())
+            }
+
+            fallbackTts?.setPitch(0.85f)
+            fallbackTts?.setSpeechRate(0.98f)
 
             fallbackTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
@@ -48,7 +55,7 @@ class AndroidFallbackVoiceEngine(
 
                 @Suppress("DEPRECATION")
                 override fun onError(utteranceId: String?) {
-                    Log.e("JARVIS", "[JARVIS][VOICE] error=TTS_FALLBACK_FAILED id=$utteranceId")
+                    Log.e("JARVIS", "[JARVIS][VOICE] error=TTS_FALLBACK_UTTERANCE_FAILED id=$utteranceId")
                     activeOnError?.invoke("TTS_FALLBACK_FAILED")
                 }
             })
@@ -74,7 +81,7 @@ class AndroidFallbackVoiceEngine(
         activeOnError = onError
 
         if (!isInitialized || fallbackTts == null) {
-            Log.e("JARVIS", "[JARVIS][VOICE] error=TTS_FALLBACK_FAILED (not ready)")
+            Log.w("JARVIS", "[JARVIS][VOICE] Fallback TTS not initialized")
             onError("TTS_FALLBACK_FAILED")
             return
         }
@@ -113,6 +120,10 @@ class AndroidFallbackVoiceEngine(
     override fun stop() {
         try {
             fallbackTts?.stop()
+            activeOnStart = null
+            activeOnDone = null
+            activeOnError = null
+            Log.i("JARVIS", "[JARVIS][VOICE] Fallback VoiceEngine stopped and queue cleared")
         } catch (_: Exception) {}
     }
 

@@ -24,6 +24,7 @@ import com.example.jarvis.core.di.JarvisBrain
 import com.example.jarvis.core.di.JarvisRequest
 import com.example.jarvis.core.di.RequestSource
 import com.example.jarvis.core.permissions.JarvisPermissionManager
+import com.example.jarvis.core.util.SpeechTextFormatter
 import com.example.jarvis.features.navigation.JarvisMainScreen
 import com.example.jarvis.features.voice.AndroidSpeechRecognizer
 import com.example.jarvis.features.voice.CompositeJarvisVoiceEngine
@@ -156,6 +157,17 @@ class MainActivity : ComponentActivity() {
     private fun handleSpokenCommand(text: String) {
         lifecycleScope.launch {
             val lowerText = text.lowercase().trim()
+
+            val isStopCommand = lowerText == "jarvis para" || lowerText == "para" || lowerText == "silencio" || lowerText == "detener"
+            if (isStopCommand) {
+                Log.i("JARVIS", "[JARVIS][VOICE] VOICE_INTERRUPTION_TRIGGERED=true")
+                ttsEngine.stop()
+                currentState = VoiceState.IDLE
+                Log.i("JARVIS", "[JARVIS][AUDIO] MIC_OWNER=WAKE_WORD")
+                sendBroadcast(Intent(WakeWordService.ACTION_RESUME_WAKE_WORD))
+                return@launch
+            }
+
             val isExitPhrase = lowerText.contains("adiós") || lowerText.contains("adios") ||
                                lowerText.contains("terminar conversación") || lowerText.contains("terminar conversacion") ||
                                lowerText.contains("hasta luego") || lowerText.contains("gracias jarvis")
@@ -195,8 +207,10 @@ class MainActivity : ComponentActivity() {
             currentState = currentState.transitionTo(VoiceState.TTS_RESPONSE)
             Log.i("JARVIS", "[JARVIS][AUDIO] MIC_OWNER=TTS")
 
+            val spokenText = SpeechTextFormatter.formatForSpeech(res.text)
+
             ttsEngine.speak(
-                text = res.text,
+                text = spokenText,
                 onStart = { Log.i("JARVIS", "[JARVIS][TTS] SPEAK_STARTED") },
                 onDone = {
                     Log.i("JARVIS", "[JARVIS][VOICE_STATE] TTS_RESPONDING -> TTS_COMPLETED")

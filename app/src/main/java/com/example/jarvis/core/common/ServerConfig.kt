@@ -8,7 +8,7 @@ object ServerConfig {
     private const val PREFS_NAME = "jarvis_server_prefs"
     private const val KEY_SERVER_URL = "custom_server_url"
     const val DEFAULT_EMULATOR_URL = "http://10.0.2.2:3000"
-    const val DEFAULT_PHYSICAL_URL = "https://jarvis-backend-gateway.onrender.com"
+    const val DEFAULT_PHYSICAL_URL = "https://jarvis-gbqy.onrender.com"
     const val DEFAULT_LOCAL_URL = "http://localhost:3000"
 
     fun getServerUrl(context: Context? = null): String {

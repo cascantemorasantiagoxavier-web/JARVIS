@@ -24,6 +24,44 @@ class DefaultIntentDetector : IntentDetector {
 
             (norm.contains("google maps") || norm.contains("en maps") || norm.contains("como llegar") || norm.contains("navegacion") || norm.contains("mapa") || (norm.contains("busca ") && (norm.contains(" en ") || norm.contains("cerca")) && (norm.contains("restaurante") || norm.contains("gasolinera") || norm.contains("supermercado") || norm.contains("farmacia") || norm.contains("hospital")))) -> "MAPS"
 
+            norm.contains("sistema empresarial") || norm.contains("crea un negocio") || norm.contains("crea un sistema") || norm.contains("sistema para mi negocio") -> "BUSINESS_SYSTEM_BUILDER"
+
+            norm.contains("catalogo de productos") || norm.contains("productos") -> "PRODUCT_CATALOG"
+
+            norm.contains("inventario") || norm.contains("stock") || norm.contains("existencias") -> "INVENTORY_CONTROL"
+
+            norm.contains("punto de venta") || norm.contains("vender") || norm.contains("registrar venta") -> "SALES_POS"
+
+            norm.contains("dashboard") || norm.contains("kpis") || norm.contains("ventas del dia") || norm.contains("finanzas del negocio") -> "BUSINESS_DASHBOARD"
+
+            norm.contains("creame una aplicacion") || norm.contains("crea una app") || norm.contains("app builder") -> "APP_BUILDER"
+
+            norm.contains("genera una imagen") || norm.contains("crea una imagen") || norm.contains("disena una imagen") -> "IMAGE_GENERATION"
+
+            norm.contains("analiza esta imagen") || norm.contains("analiza esta captura") || norm.contains("ocr") -> "IMAGE_ANALYSIS"
+
+            norm.contains("explica este codigo") || norm.contains("analiza este codigo") || norm.contains("debug") -> "CODE_ASSISTANCE"
+
+            norm.contains("guion") || norm.contains("escribe un guion") || norm.contains("crea un guion") || norm.contains("script studio") -> "SCRIPT_STUDIO"
+
+            norm.contains("diagnostico") || norm.contains("salud del sistema") -> "DIAGNOSTIC_TOOL"
+
+            norm.contains("compara proveedores") || norm.contains("comparativa de proveedores") -> "SUPPLIER_COMPARISON"
+
+            norm.contains("analisis de mercado") || norm.contains("tendencias de mercado") -> "MARKET_ANALYSIS"
+
+            norm.contains("margen de ganancia") || norm.contains("markup") || norm.contains("punto de equilibrio") -> "FINANCIAL_CALC"
+
+            norm.contains("flete") || norm.contains("costo de flete") || norm.contains("logistica") -> "LOGISTICS_CALCULATOR"
+
+            norm.contains("analisis estadistico") || norm.contains("analiza datos") -> "DATA_ANALYTICS"
+
+            norm.contains("flujo de trabajo") || norm.contains("workflow") || norm.contains("automatizacion") -> "WORKFLOW_AUTOMATION"
+
+            norm.contains("importar") || norm.contains("importacion") || norm.contains("al por mayor") || norm.contains("costo de importar") || norm.contains("cuanto cuesta importar") -> "IMPORT_RESEARCH"
+
+            norm.contains("prospecto") || norm.contains("prospectos") || norm.contains("prospeccion") || norm.contains("busca negocios") || norm.contains("negocios de") || norm.contains("tiendas de") -> "BUSINESS_PROSPECT"
+
             norm.contains("contacto") || norm.contains("contactos") || norm.contains("numero de") || norm.contains("telefono de") -> "CONTACT_SEARCH"
 
             norm.contains("buenos dias") || norm.contains("informe diario") || norm.contains("resumen del dia") || norm.contains("briefing") || norm.contains("organiza mi dia") -> "DAILY_BRIEFING"

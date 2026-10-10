@@ -17,6 +17,7 @@ import com.example.jarvis.ai.wakeword.WakeWordService
 import com.example.jarvis.core.di.JarvisBrain
 import com.example.jarvis.core.di.JarvisRequest
 import com.example.jarvis.core.di.RequestSource
+import com.example.jarvis.core.util.SpeechTextFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +29,8 @@ data class VoiceUiState(
     val statusText: String = "Cerebro Híbrido Gemini conectado (Voz lista)",
     val userQuery: String = "",
     val audioLevel: Float = 0f,
-    val hasMicPermission: Boolean = false
+    val hasMicPermission: Boolean = false,
+    val isAutoListenEnabled: Boolean = true
 )
 
 class VoiceViewModel(application: Application) : AndroidViewModel(application) {
@@ -117,6 +119,19 @@ class VoiceViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun handleTranscribedSpeech(text: String) {
         viewModelScope.launch {
+            val lowerText = text.lowercase().trim()
+
+            val isStopCommand = lowerText == "jarvis para" || lowerText == "para" || lowerText == "silencio" || lowerText == "detener"
+            if (isStopCommand) {
+                Log.i("JARVIS", "[JARVIS][VOICE] VOICE_INTERRUPTION_TRIGGERED=true")
+                voiceEngine.stop()
+                _uiState.update { it.copy(voiceState = RealtimeConnectionState.IDLE, statusText = "Voz detenida por interrupción", audioLevel = 0f) }
+                return@launch
+            }
+
+            val isExitPhrase = lowerText.contains("adiós") || lowerText.contains("adios") ||
+                               lowerText.contains("hasta luego") || lowerText.contains("terminar conversación")
+
             Log.i("JARVIS", "[JARVIS][VOICE] brain_request_started query=\"$text\"")
             _uiState.update {
                 it.copy(
@@ -133,15 +148,35 @@ class VoiceViewModel(application: Application) : AndroidViewModel(application) {
             Log.i("JARVIS", "[JARVIS][VOICE] brain_response_received text_length=${response.text.length}")
             _uiState.update { it.copy(statusText = response.text, audioLevel = 0f) }
 
+            val spokenText = SpeechTextFormatter.formatForSpeech(response.text)
+
             voiceEngine.speak(
-                text = response.text,
+                text = spokenText,
                 onStart = {
                     Log.i("JARVIS", "[JARVIS][VOICE] tts_started=true")
                     _uiState.update { it.copy(voiceState = RealtimeConnectionState.SPEAKING, audioLevel = 0f) }
                 },
                 onDone = {
                     Log.i("JARVIS", "[JARVIS][VOICE] tts_completed=true")
-                    _uiState.update { it.copy(voiceState = RealtimeConnectionState.IDLE, statusText = "Respuesta completada - Listo", audioLevel = 0f) }
+                    if (!isExitPhrase && _uiState.value.isAutoListenEnabled) {
+                        Log.i("JARVIS", "[JARVIS][VOICE] RESUME_LISTENING")
+                        _uiState.update {
+                            it.copy(
+                                voiceState = RealtimeConnectionState.LISTENING,
+                                statusText = "JARVIS escuchando tu siguiente pregunta...",
+                                audioLevel = 0f
+                            )
+                        }
+                        sttRecognizer.startListening()
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                voiceState = RealtimeConnectionState.IDLE,
+                                statusText = "Conversación finalizada",
+                                audioLevel = 0f
+                            )
+                        }
+                    }
                 },
                 onError = { errCode ->
                     Log.e("JARVIS", "[JARVIS][VOICE] error=$errCode")

@@ -2,7 +2,7 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const express = require('express');
 const { createRealtimeSession, createChatCompletion } = require('./openaiService');
 const { createGeminiCompletion } = require('./geminiService');
-
+const { getAudio } = require('ms-tts-api');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -95,7 +95,19 @@ app.post('/api/gemini/chat', async (req, res) => {
         }
 
         const result = await createGeminiCompletion(apiKey, model, messages);
-        res.json(result);
+        // Extraer la respuesta en texto que genera Gemini
+            const textResponse = result.text || result.content || (typeof result === 'string' ? result : JSON.stringify(result));
+
+            // Generar el audio MP3 con la voz elegante de JARVIS
+            const audioStream = await getAudio(textResponse, 'es-ES-AlvaroNeural');
+            const audioBase64 = audioStream.toString('base64');
+
+            // Devolver texto Y audio juntos a la app Android
+            res.json({
+              ...result,
+              text: textResponse,
+              audio: audioBase64
+            });
     } catch (error) {
         console.error('[JARVIS Backend] Gemini completion error:', error.message);
         const statusCode = error.status || (error.code === 'GEMINI_QUOTA_EXHAUSTED' ? 429 : error.code === 'API_KEY_INVALID' ? 401 : 500);
