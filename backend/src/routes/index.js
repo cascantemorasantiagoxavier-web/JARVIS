@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { validate } from '../http/validate.js';
 import { extractPage } from '../services/search/pageExtractor.js';
 import {
@@ -8,13 +8,20 @@ import {
   ChatBody,
   RealtimeCallBody,
   RealtimeSessionBody,
+  TranscribeBody,
+  VisionBody,
   WebFetchBody,
   WebSearchBody,
 } from './schemas.js';
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
-export function healthRouter({ config, realtime, chat, webSearch }) {
+// Rutas con imágenes o audio en base64: su propio límite de cuerpo, y se leen solo
+// después de comprobar el token (el parser general las omite; ver app.js).
+export const MEDIA_ROUTES = /^\/api\/(vision|audio)\//;
+const mediaJson = express.json({ limit: '16mb' });
+
+export function healthRouter({ config, realtime, chat, webSearch, media }) {
   const r = Router();
   r.get('/health', (_req, res) => {
     res.json({
@@ -28,13 +35,15 @@ export function healthRouter({ config, realtime, chat, webSearch }) {
         chat: chat.enabled,
         webSearch: webSearch.describe().map((p) => p.id),
         business: true,
+        vision: media.enabled,
+        transcription: media.enabled && Boolean(config.openai.media.transcribeModel),
       },
     });
   });
   return r;
 }
 
-export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, config }) {
+export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, config }) {
   const r = Router();
 
   r.post('/realtime/session', validate(RealtimeSessionBody), wrap(async (req, res) => {
@@ -53,12 +62,22 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
     res.json({
       realtime: { ...usage.realtimeSessions(), maxPerHour: config.openai.realtime.maxSessionsPerHour, maxPerDay: config.openai.realtime.maxSessionsPerDay },
       chat: { today: usage.chatRequestsToday(), maxPerDay: config.openai.text.maxRequestsPerDay },
+      vision: { today: usage.mediaToday('vision'), maxPerDay: config.openai.media.maxVisionPerDay },
+      transcription: { today: usage.mediaToday('transcribe'), maxPerDay: config.openai.media.maxTranscriptionsPerDay },
       note: 'Contadores en memoria del servidor; se reinician al reiniciar el backend. El gasto real se consulta en el panel de OpenAI.',
     });
   });
 
   r.post('/chat', validate(ChatBody), wrap(async (req, res) => {
     res.json(await chat.respond(req.valid.body));
+  }));
+
+  r.post('/vision/analyze', mediaJson, validate(VisionBody), wrap(async (req, res) => {
+    res.json(await media.analyze(req.valid.body));
+  }));
+
+  r.post('/audio/transcribe', mediaJson, validate(TranscribeBody), wrap(async (req, res) => {
+    res.json(await media.transcribe(req.valid.body));
   }));
 
   r.post('/web/search', validate(WebSearchBody), wrap(async (req, res) => {

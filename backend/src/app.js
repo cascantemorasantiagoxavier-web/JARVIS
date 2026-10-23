@@ -8,10 +8,11 @@ import { requireClientToken } from './http/auth.js';
 import { errorMiddleware, Errors } from './http/errors.js';
 import { createHttpClient } from './http/httpClient.js';
 import { createSafePageTransport } from './http/safeFetch.js';
-import { apiRouter, healthRouter } from './routes/index.js';
+import { apiRouter, healthRouter, MEDIA_ROUTES } from './routes/index.js';
 import { BusinessSearchService } from './services/business/businessService.js';
 import { createThrottle, NominatimClient, OverpassClient } from './services/business/osmClients.js';
 import { ChatService } from './services/openai/chat.js';
+import { MediaService } from './services/openai/media.js';
 import { RealtimeService } from './services/openai/realtime.js';
 import { buildProviders, WebSearchService } from './services/search/webSearchService.js';
 import { UsageTracker } from './services/usage.js';
@@ -23,6 +24,7 @@ export function createServices(config, logger, overrides = {}) {
   const usage = overrides.usage ?? new UsageTracker();
   const realtime = new RealtimeService({ config, http, logger, usage });
   const chat = new ChatService({ config, http, logger, usage });
+  const media = new MediaService({ config, http, logger, usage });
   const webSearch = new WebSearchService({ providers: overrides.providers ?? buildProviders(config, http), logger });
   const pageFetcher = overrides.pageFetcher ?? createSafePageTransport({ userAgent: userAgent(config) });
   const throttle = overrides.throttle;
@@ -34,7 +36,7 @@ export function createServices(config, logger, overrides = {}) {
     logger,
     config,
   });
-  return { http, usage, realtime, chat, webSearch, pageFetcher, business };
+  return { http, usage, realtime, chat, media, webSearch, pageFetcher, business };
 }
 
 export function createApp(config, logger, overrides = {}) {
@@ -43,7 +45,8 @@ export function createApp(config, logger, overrides = {}) {
   app.disable('x-powered-by');
   if (config.trustProxy) app.set('trust proxy', 1);
   app.use(helmet());
-  app.use(express.json({ limit: '512kb' }));
+  const smallJson = express.json({ limit: '512kb' });
+  app.use((req, res, next) => (MEDIA_ROUTES.test(req.path) ? next() : smallJson(req, res, next)));
   app.use(
     rateLimit({
       windowMs: 60_000,

@@ -157,7 +157,8 @@ class ExpenseCaptureSkill : Skill {
         val date = fields.str("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: ctx.time.zonedNow().toLocalDate()
         val t = Transaction("expense", total.amount.toPlainString(), total.currency, input.str("category") ?: ExpenseParser.category(merchant + " " + (fields.str("items") ?: "")), merchant, date.toString(), source = "receipt")
         // Datos extraídos por IA: se confirman antes de guardar.
-        if (!ctx.confirm("Guardar gasto leído del recibo: ${total.format()} en $merchant ($date). Verifica que coincide con el recibo.")) return Outcome.notConfirmed("No guardé el gasto del recibo.")
+        val assumed = if (fields.str("currency") == null) " La moneda no se leyó en el recibo: supuse colones." else ""
+        if (!ctx.confirm("Guardar gasto leído del recibo: ${total.format()} en $merchant ($date).$assumed Verifica que coincide con el recibo.")) return Outcome.notConfirmed("No guardé el gasto del recibo.")
         return save(ctx, t, src + SkillSource("Recibo fotografiado (lectura por IA)", kind = "imagen"))
     }
 }

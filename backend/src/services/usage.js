@@ -5,6 +5,7 @@ export class UsageTracker {
     this.now = now;
     this.realtime = [];
     this.chat = [];
+    this.media = { vision: [], transcribe: [] };
   }
 
   prune(list, windowMs) {
@@ -29,5 +30,15 @@ export class UsageTracker {
   chatRequestsToday() {
     this.prune(this.chat, 86_400_000);
     return this.chat.length;
+  }
+
+  /** kind: "vision" | "transcribe". */
+  recordMedia(kind) {
+    this.media[kind].push(this.now());
+  }
+
+  mediaToday(kind) {
+    this.prune(this.media[kind], 86_400_000);
+    return this.media[kind].length;
   }
 }

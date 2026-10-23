@@ -51,6 +51,11 @@ const EnvSchema = z.object({
     .optional()
     .default('low'),
   CHAT_MAX_REQUESTS_PER_DAY: int(500, 1, 1000000),
+  // Visión: por defecto el mismo modelo de texto (debe aceptar imágenes).
+  OPENAI_VISION_MODEL: optionalString,
+  OPENAI_TRANSCRIBE_MODEL: z.string().optional().default('gpt-4o-mini-transcribe'),
+  VISION_MAX_REQUESTS_PER_DAY: int(100, 1, 100000),
+  TRANSCRIBE_MAX_REQUESTS_PER_DAY: int(100, 1, 100000),
 
   SEARCH_PROVIDERS: z.string().optional().default('auto'),
   SEARXNG_URL: optionalString,
@@ -108,6 +113,12 @@ export function loadConfig(env = process.env) {
         model: e.OPENAI_TEXT_MODEL,
         reasoningEffort: e.OPENAI_TEXT_REASONING_EFFORT === 'off' ? undefined : e.OPENAI_TEXT_REASONING_EFFORT,
         maxRequestsPerDay: e.CHAT_MAX_REQUESTS_PER_DAY,
+      }),
+      media: Object.freeze({
+        visionModel: e.OPENAI_VISION_MODEL ?? e.OPENAI_TEXT_MODEL,
+        transcribeModel: e.OPENAI_TRANSCRIBE_MODEL === 'none' ? undefined : e.OPENAI_TRANSCRIBE_MODEL,
+        maxVisionPerDay: e.VISION_MAX_REQUESTS_PER_DAY,
+        maxTranscriptionsPerDay: e.TRANSCRIBE_MAX_REQUESTS_PER_DAY,
       }),
     }),
     search: Object.freeze({

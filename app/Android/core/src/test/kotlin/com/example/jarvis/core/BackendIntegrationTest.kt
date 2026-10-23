@@ -2,6 +2,11 @@ package com.example.jarvis.core
 
 import com.example.jarvis.core.brain.BackendLlmClient
 import com.example.jarvis.core.business.FieldStatus
+import com.example.jarvis.core.device.MediaFile
+import com.example.jarvis.core.device.MediaResult
+import com.example.jarvis.core.json.jsonOf
+import com.example.jarvis.core.json.obj
+import com.example.jarvis.core.skills.SkillStatus
 import com.example.jarvis.core.model.JarvisRequest
 import com.example.jarvis.core.model.ResultCard
 import com.example.jarvis.core.net.BackendClient
@@ -14,6 +19,8 @@ import com.example.jarvis.core.net.WebSearchRequest
 import com.example.jarvis.core.tools.ToolContext
 import com.example.jarvis.core.tools.WorkingContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -41,6 +48,8 @@ class BackendIntegrationTest {
         private const val OPENAI_KEY = "sk-integration-PERMANENT-KEY-0000"
         private val upstream = MockWebServer()
         private val seen: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+        /** (ruta, cuerpo) de cada petición al proveedor simulado; el cuerpo solo se puede leer una vez. */
+        private val bodies: MutableList<Pair<String, String>> = Collections.synchronizedList(mutableListOf())
         private var node: Process? = null
         private var baseUrl = ""
 
@@ -58,7 +67,11 @@ class BackendIntegrationTest {
                     val body = request.body.readUtf8()
                     seen += request
                     val path = request.path.orEmpty()
+                    bodies += path to body
                     return when {
+                        path == "/v1/responses" && body.contains("input_image") ->
+                            json("""{"status":"completed","model":"gpt-5.4-mini","output":[{"type":"message","content":[{"type":"output_text","text":"{\"text\":\"Ana Mora · Café Volcán\",\"fields\":{\"name\":\"Ana Mora\",\"company\":\"Café Volcán\",\"title\":null,\"phone\":\"+506 2222 3333\",\"email\":\"ana@cafevolcan.cr\",\"website\":null,\"address\":\"\"}}"}]}]}""")
+                        path == "/v1/audio/transcriptions" -> json("""{"text":"Recuérdame llamar al contador mañana a las 10"}""")
                         path == "/v1/realtime/client_secrets" -> json("""{"value":"ek_integration","expires_at":1900000000,"session":{"type":"realtime"}}""")
                         path == "/v1/realtime/calls" -> MockResponse().setResponseCode(201).setHeader("location", "/v1/realtime/calls/rtc_int1").setBody("v=0\r\ns=answer\r\n")
                         path == "/v1/responses" && body.contains("function_call_output") ->
@@ -172,5 +185,46 @@ class BackendIntegrationTest {
         val second = seen.filter { it.path == "/v1/responses" }.last()
         val sentBody = second.body.clone().readUtf8()
         assertTrue(sentBody.isEmpty() || sentBody.contains("function_call_output"))
+    }
+
+    private fun JsonObject.txt(k: String) = this[k]?.jsonPrimitive?.content
+
+    /** Imagen y audio sintéticos: solo la cabecera es real (el servidor comprueba el tipo por sus bytes). */
+    private fun jpeg() = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte()) + ByteArray(400)
+    private fun m4a() = byteArrayOf(0, 0, 0, 0x20) + "ftypM4A ".toByteArray() + ByteArray(400)
+
+    @Test fun businessCardSkillThroughRealBackendVision() = runBlocking {
+        val kit = TestKit(backendUrl = baseUrl, token = TOKEN)
+        kit.media.photo = MediaResult.Ok(MediaFile("tarjeta.jpg", "image/jpeg", jpeg()))
+        val r = kit.runSkill("barcode_business_card_scanner", jsonOf("mode" to "business_card"))
+        assertEquals(r.summary, SkillStatus.COMPLETED, r.status)
+        val contact = r.data.obj("contact")!!
+        assertEquals("Ana Mora", contact.txt("name"))
+        assertEquals("ana@cafevolcan.cr", contact.txt("email"))
+        assertEquals(null, contact.txt("address"))
+        assertEquals("false", r.data.txt("verified"))
+        val upstreamBody = bodies.last { it.first == "/v1/responses" && it.second.contains("input_image") }.second
+        assertTrue(upstreamBody.contains("data:image/jpeg;base64,/9j/"))
+        assertTrue(upstreamBody.contains("\"json_schema\""))
+        assertTrue(upstreamBody.contains("\"store\":false"))
+    }
+
+    @Test fun voiceMemoSkillThroughRealBackendTranscription() = runBlocking {
+        val kit = TestKit(backendUrl = baseUrl, token = TOKEN)
+        kit.media.audio = MediaResult.Ok(MediaFile("nota.m4a", "audio/mp4", m4a()))
+        val r = kit.runSkill("voice_memo_inbox", jsonOf("action" to "record"))
+        assertEquals(r.summary, SkillStatus.COMPLETED, r.status)
+        assertEquals("Recuérdame llamar al contador mañana a las 10", r.data.obj("item")!!.txt("text"))
+        val multipart = bodies.last { it.first == "/v1/audio/transcriptions" }.second
+        assertTrue(multipart.contains("gpt-4o-mini-transcribe"))
+        assertTrue(multipart.contains("filename=\"nota.m4a\""))
+        assertEquals("Bearer $OPENAI_KEY", seen.last { it.path == "/v1/audio/transcriptions" }.getHeader("Authorization"))
+
+        // Audio que no es lo que dice ser: el servidor lo rechaza sin llamar a OpenAI.
+        val before = bodies.count { it.first == "/v1/audio/transcriptions" }
+        kit.media.audio = MediaResult.Ok(MediaFile("nota.m4a", "audio/mp4", ByteArray(400) { 1 }))
+        val bad = kit.runSkill("voice_memo_inbox", jsonOf("action" to "record"))
+        assertTrue(bad.status != SkillStatus.COMPLETED)
+        assertEquals(before, bodies.count { it.first == "/v1/audio/transcriptions" })
     }
 }

@@ -31,7 +31,7 @@ export const ChatBody = z
           parameters: jsonSchemaObject,
         }),
       )
-      .max(40)
+      .max(64)
       .optional(),
     mode: z.enum(['FAST', 'BALANCED', 'DEEP']).optional(),
   })
@@ -68,3 +68,25 @@ export const BusinessSearchBody = z
   .refine((b) => b.location || b.near, { message: 'Indica location o near.' });
 
 export const BusinessIdParams = z.object({ id: z.string().regex(/^osm:(node|way|relation):\d{1,15}$/) });
+
+// Base64 estándar sin espacios. Límites alineados con shared/tools.json
+// (imagen ≤ 8 000 000 caracteres ≈ 6 MB; audio ≤ 15 000 000 ≈ 11 MB).
+const base64 = (max) => z.string().min(100).max(max).regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Base64 no válido.');
+
+export const VisionBody = z.object({
+  imageBase64: base64(8_000_000),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  task: z.enum(['describe', 'business_card', 'receipt', 'document_text']),
+  question: z.string().trim().max(500).optional(),
+});
+
+export const TranscribeBody = z.object({
+  audioBase64: base64(15_000_000),
+  mimeType: z.enum(['audio/mp4', 'audio/m4a', 'audio/mpeg', 'audio/wav', 'audio/webm', 'audio/ogg']),
+  // ISO-639-1; se acepta "es-CR" y se envía "es".
+  language: z
+    .string()
+    .regex(/^[a-zA-Z]{2}([-_][a-zA-Z]{2})?$/)
+    .transform((v) => v.slice(0, 2).toLowerCase())
+    .optional(),
+});
