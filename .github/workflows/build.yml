@@ -39,6 +39,8 @@ jobs:
     name: Núcleo, APK y pruebas de la app
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write # para publicar el APK en la página de descargas (Releases)
     defaults:
       run:
         working-directory: app/Android
@@ -67,6 +69,18 @@ jobs:
           name: jarvis-debug-apk
           path: app/Android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      # Enlace fijo y público para descargar desde el teléfono (sin iniciar sesión):
+      # https://github.com/<dueño>/<repo>/releases/download/jarvis-ultimo/jarvis-debug.apk
+      - name: Publicar el APK para descargar
+        if: github.event_name == 'push' && startsWith(github.ref_name, 'jarvis-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/*.apk jarvis-debug.apk
+          gh release delete jarvis-ultimo --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create jarvis-ultimo jarvis-debug.apk --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --prerelease --title "JARVIS · versión de prueba" \
+            --notes "APK de depuración generado automáticamente desde la rama ${GITHUB_REF_NAME} (commit ${GITHUB_SHA::7}). Para instalarlo, Android pedirá permitir apps de origen desconocido. Configura la URL y el token de tu servidor en Ajustes."
       - name: Pruebas de la app (Robolectric)
         run: ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee build-app-tests.log
       # Los errores quedan como anotaciones: se leen con la API pública de GitHub sin token.

@@ -77,10 +77,15 @@ Hace llamadas reales (OpenAI, OpenStreetMap, búsqueda). Consume un poco de sald
 ### Sin Android Studio: GitHub Actions (recomendado)
 Cada vez que se sube código a GitHub (ramas `main`, `master` o `jarvis-*`), el flujo
 `.github/workflows/build.yml` ejecuta las pruebas del servidor y del núcleo, compila el APK y luego
-las pruebas de la app. Para descargarlo:
-1. GitHub → tu repositorio → pestaña **Actions** → la última ejecución en verde.
-2. Abajo, en **Artifacts**, descarga `jarvis-debug-apk` (un `.zip` con el `.apk`).
-3. Pásalo al teléfono e instálalo (Android pedirá permitir «instalar apps desconocidas»).
+las pruebas de la app. El APK de las ramas `jarvis-*` se publica además en la página de descargas:
+
+- **Enlace directo (desde el teléfono, sin iniciar sesión):**
+  `https://github.com/cascantemorasantiagoxavier-web/JARVIS/releases/download/jarvis-ultimo/jarvis-debug.apk`
+- Página: `https://github.com/cascantemorasantiagoxavier-web/JARVIS/releases/tag/jarvis-ultimo`
+- Alternativa: pestaña **Actions** → ejecución → **Artifacts** → `jarvis-debug-apk` (requiere sesión; es un `.zip`).
+
+Al instalarlo, Android pedirá permitir «instalar apps desconocidas» para el navegador. Es una versión de
+depuración: Play Protect puede avisar que la app es desconocida.
 
 Si la compilación falla, los errores aparecen como anotaciones en la ejecución.
 No usa ninguna clave: las pruebas simulan los servicios externos.
