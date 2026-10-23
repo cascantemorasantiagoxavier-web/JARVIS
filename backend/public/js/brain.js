@@ -65,7 +65,8 @@ export class Brain {
       try {
         res = await api.chat({ instructions: this.instructions(), input, tools: this.toolbox.modelTools(), mode: 'BALANCED' });
       } catch (err) {
-        if (err instanceof ApiError && (err.status === 503 || err.code === 'no_token')) {
+        // Sin IA configurada, sin token o sin conexión: lo que el navegador puede hacer solo.
+        if (err instanceof ApiError && (err.status === 503 || err.code === 'no_token' || err.code === 'offline')) {
           const local = await this.local(text);
           if (local) return { ...local, local: true, notice: err.message };
         }

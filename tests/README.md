@@ -14,8 +14,8 @@ Ejecuta todo lo posible con `scripts/test-all.sh`. Clasificación: ver `.claude/
 | `backend/test/search.test.js` | Proveedores de búsqueda, normalización, deduplicación, extractor de páginas, protección SSRF |
 | `backend/test/business.test.js` | Overpass/Nominatim, categorías en español, zonas de Costa Rica, estado de cada dato, fusión de duplicados |
 | `backend/test/media.test.js` | Visión (imagen en data URL, Structured Outputs estricto, campos vacíos → null, rechazo, incompleta), transcripción multipart, tipo por bytes, 401 antes de leer cuerpos grandes, límites diarios |
-| `backend/test/web.test.js` | JARVIS Web servida por Express: HTML con CSP estricta (sin scripts en línea), tipos de archivo, `/api` sigue exigiendo token, copias de `shared/` sincronizadas, herramientas de la web en el contrato, sin secretos ni `innerHTML` |
-| `backend/test/e2e/web.e2e.js` | **Chromium real** (Playwright, `npm run test:e2e`): token y conexión, HUD/globo/clima, chat con herramienta (`business_search`) de punta a punta con OpenAI simulado en el servidor, confirmación de `forget`, texto del modelo sin HTML ni `javascript:`, tareas y memoria privada fuera del modelo, clips → «Subir a YouTube» en privado con confirmación, **voz WebRTC real** contra un par simulado (SDP, `session.update`, herramienta por voz, `end_conversation` y colgado), móvil sin desbordes |
+| `backend/test/web.test.js` | JARVIS Web servida por Express: HTML con CSP estricta (sin scripts en línea), tipos de archivo, `/api` sigue exigiendo token, copias de `shared/` sincronizadas, herramientas de la web en el contrato, sin secretos ni `innerHTML`, el service worker solo guarda archivos existentes y nunca `/api`, iconos del manifiesto |
+| `backend/test/e2e/web.e2e.js` | **Chromium real** (Playwright, `npm run test:e2e`): token y conexión, HUD/globo/clima, chat con herramienta (`business_search`) de punta a punta con OpenAI simulado en el servidor, confirmación de `forget`, texto del modelo sin HTML ni `javascript:`, tareas y memoria privada fuera del modelo, clips → «Subir a YouTube» en privado con confirmación, **voz WebRTC real** contra un par simulado (SDP, `session.update`, herramienta por voz, `end_conversation` y colgado), móvil sin desbordes, **foto** (JPEG reducido → visión con salida estricta, «no se lee» en vez de inventar, «Recordar»), **dictado** (micrófono simulado → audio WebM real → transcripción), clima sin IA, **copia de seguridad** sin token y restauración, **service worker** (abre sin conexión y responde en local) |
 | `backend/test/live/live.test.js` | **En vivo** (opt-in): OpenAI, OSM y búsqueda reales |
 | `core/.../LocalToolsTest.kt` | Hora, fechas en español ("mañana a las 3"), cálculos, conversiones |
 | `core/.../ToolsInfraTest.kt` | Catálogo `shared/tools.json`, validación de argumentos, permisos, confirmaciones, registro |
@@ -39,8 +39,12 @@ Con el servidor desplegado (`https://<tu-servicio>.onrender.com/`):
 1. Abre la página → pide el token → «Conectar» → la etiqueta de arriba dice «En línea».
 2. Escribe «¿qué hora es?» y «busca ferreterías en Heredia» → lista con estado por dato; el mapa solo se abre al tocar «Mapa».
 3. Toca «Hablar» → el navegador pide el micrófono → habla con JARVIS; interrúmpelo; di «adiós» → cuelga solo.
-4. Paneles: crea una tarea «en 2 minutos» con la página abierta → llega el aviso.
-5. Clips: pega un enlace de un video tuyo → «Hacer clips» → cuando estén listos, «Subir a YouTube» → confirma → aparece en tu canal como privado.
+4. Paneles: crea una tarea «en 2 minutos» con la página abierta → llega el aviso (en Android, como
+   notificación del sistema si activaste «Activar avisos del navegador»).
+5. Cámara → foto de una tarjeta de presentación → datos correctos; lo que no se ve dice «no se lee».
+6. Micrófono del cuadro de texto → dicta una frase → aparece escrita para revisar.
+7. Instalar → se abre como app; modo avión → sigue abriendo y responde la hora.
+8. Clips: pega un enlace de un video tuyo → «Hacer clips» → cuando estén listos, «Subir a YouTube» → confirma → aparece en tu canal como privado.
 
 La voz con OpenAI real y OpusClip real siguen **NO TESTEADOS** hasta que se haga esta lista con claves.
 

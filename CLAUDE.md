@@ -20,7 +20,8 @@ backend/            Node 22 + Express 5. Guarda la clave de OpenAI. Rutas /api/*
   src/services/video      OpusClip: clips de video y publicación en YouTube vía OpusClip
   public/                 JARVIS Web: HUD en el navegador (ES modules sin compilar, CSP estricta).
                           js/tools.js = herramientas con la MISMA política de riesgo; js/brain.js,
-                          js/realtime.js (voz WebRTC). public/shared = copia de ../shared (npm run sync-shared)
+                          js/realtime.js (voz WebRTC), js/media.js (foto, dictado), sw.js (instalable y sin
+                          conexión; nunca /api). public/shared = copia de ../shared (npm run sync-shared)
   test/                   node:test con fetch simulado; test/e2e = Chromium real (Playwright);
                           test/live = pruebas reales (opt-in)
 shared/             tools.json (49 herramientas con nivel de riesgo, fuente única), skills/*.json (45
@@ -53,8 +54,8 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 84 pruebas, sin red
-npm run test:e2e                           # JARVIS Web en Chromium real (9 pruebas; necesita playwright + chromium)
+cd backend && npm ci && npm test          # 85 pruebas, sin red
+npm run test:e2e                           # JARVIS Web en Chromium real (14 pruebas; necesita playwright + chromium)
 npm run sync-shared                        # tras cambiar shared/tools.json o persona-es.md
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)
 npm start                                  # lee backend/.env

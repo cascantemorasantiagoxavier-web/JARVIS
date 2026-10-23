@@ -16,7 +16,8 @@
     "test:e2e": "node --test --test-reporter=spec --test-concurrency=1 \"test/e2e/*.e2e.js\"",
     "gen-token": "node scripts/gen-token.js",
     "sync-shared": "node scripts/sync-shared.js",
-    "build-globe": "python3 -I scripts/build-globe-data.py"
+    "build-globe": "python3 -I scripts/build-globe-data.py",
+    "build-icons": "node scripts/build-icons.js"
   },
   "dependencies": {
     "express": "5.3.0",

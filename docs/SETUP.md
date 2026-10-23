@@ -72,11 +72,19 @@ Hace llamadas reales (OpenAI, OpenStreetMap, búsqueda). Consume un poco de sald
    No es la clave de OpenAI. Se guarda solo en ese navegador.
 3. Escribe en el cuadro de la derecha o toca **Hablar** (el navegador pide el micrófono; la voz nunca
    empieza sola). Paneles: Tareas, Memoria, Negocios, Clips (OpusClip → YouTube) y Ajustes.
-4. En el teléfono: menú del navegador → **Agregar a la pantalla principal** para abrirla como app.
+4. Junto al cuadro de texto: **cámara** (foto de una tarjeta de presentación, un recibo o un documento;
+   JARVIS lee los datos sin inventar los que no se ven) y **micrófono** (dictado: graba, transcribe y deja
+   el texto para que lo revises antes de enviarlo; más barato que la voz en tiempo real).
+5. Instalar como app: botón **Instalar** arriba (Chrome/Edge) o, en el teléfono, menú del navegador →
+   **Agregar a la pantalla principal**. Abre sin conexión (tareas, memoria, hora y cálculos funcionan).
+6. **Ajustes → Copia de seguridad**: descarga un archivo con tu memoria, tareas, clips y conversación
+   para pasarlos a otro equipo («Restaurar copia»). No incluye el token. Guárdalo en un lugar seguro:
+   contiene también los recuerdos privados.
 
-Diferencias con la app Android: la web no lee notas de Obsidian, cámara, contactos ni alarmas del
-teléfono; los avisos de tareas suenan solo con la página abierta; llamar, abrir rutas o compartir deja
-un botón que tú tocas. Memoria, tareas y conversación se guardan en ese navegador (Ajustes → Borrar todo).
+Diferencias con la app Android: la web no lee notas de Obsidian, contactos ni alarmas del teléfono, ni
+tiene las 45 habilidades; los avisos de tareas suenan solo con la página (o la app instalada) abierta;
+llamar, abrir rutas o compartir deja un botón que tú tocas. Memoria, tareas y conversación se guardan en
+ese navegador (Ajustes → Borrar todo).
 
 ---
 

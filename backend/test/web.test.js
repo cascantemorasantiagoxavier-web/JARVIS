@@ -38,6 +38,9 @@ test('web: módulos, estilos, fuentes, globo y manifiesto se sirven con su tipo'
       ['/data/globe.json', /application\/json/],
       ['/manifest.webmanifest', /manifest\+json|application\/json/],
       ['/icon.svg', /image\/svg\+xml/],
+      ['/icons/icon-192.png', /image\/png/],
+      ['/icons/maskable-512.png', /image\/png/],
+      ['/sw.js', /javascript/],
     ];
     for (const [path, type] of cases) {
       const r = await srv.call('GET', path, undefined, { token: null });
@@ -93,4 +96,18 @@ test('web: ningún archivo público contiene secretos ni usa innerHTML', () => {
     assert.doesNotMatch(text, /sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,}/, `posible clave en ${file}`);
     if (file.endsWith('.js')) assert.doesNotMatch(text, /\.innerHTML\s*=|insertAdjacentHTML|eval\(|new Function\(/, `HTML/JS dinámico inseguro en ${file}`);
   }
+});
+
+test('web: el service worker solo guarda archivos que existen y nunca /api ni /health', () => {
+  const sw = readFileSync(join(PUBLIC_DIR, 'sw.js'), 'utf8');
+  const shell = JSON.parse(sw.match(/const SHELL = (\[[\s\S]*?\]);/)[1].replace(/'/g, '"').replace(/,\s*\]/, ']'));
+  for (const path of shell.filter((p) => p !== '/')) {
+    assert.ok(readFileSync(join(PUBLIC_DIR, path)).length > 0, `${path} no existe en public/`);
+  }
+  const modules = readdirSync(join(PUBLIC_DIR, 'js')).map((f) => `/js/${f}`);
+  for (const m of modules) assert.ok(shell.includes(m), `${m} falta en la lista del service worker`);
+  assert.match(sw, /url\.pathname\.startsWith\('\/api\/'\) \|\| url\.pathname === '\/health'\) return;/);
+  const manifest = JSON.parse(readFileSync(join(PUBLIC_DIR, 'manifest.webmanifest'), 'utf8'));
+  for (const icon of manifest.icons) assert.ok(readFileSync(join(PUBLIC_DIR, icon.src)).length > 0, icon.src);
+  assert.ok(manifest.icons.some((i) => i.sizes === '192x192') && manifest.icons.some((i) => i.sizes === '512x512'), 'iconos para instalar');
 });

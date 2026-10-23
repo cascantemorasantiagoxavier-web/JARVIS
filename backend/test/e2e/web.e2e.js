@@ -23,6 +23,7 @@ const shot = async (page, name) => SHOTS && page.screenshot({ path: join(SHOTS, 
 // Cola de respuestas simuladas de OpenAI /responses y registro de lo que se le envió.
 const openaiQueue = [];
 const openaiBodies = [];
+const transcribeForms = [];
 const reply = (text) => ({ status: 'completed', model: 'gpt-test', output: [{ type: 'message', content: [{ type: 'output_text', text }] }] });
 const call = (name, args, id = `call_${name}`) => ({ status: 'completed', model: 'gpt-test', output: [{ type: 'function_call', call_id: id, name, arguments: JSON.stringify(args) }] });
 
@@ -55,6 +56,10 @@ before(async () => {
       openaiBodies.push(JSON.parse(init.body));
       const next = openaiQueue.shift();
       return next ? json(200, next) : json(200, reply('(sin guion)'));
+    }],
+    [(u) => u.endsWith('/audio/transcriptions'), (_u, init) => {
+      transcribeForms.push(init.body);
+      return json(200, { text: 'Recuérdame comprar café mañana' });
     }],
   ]);
   srv = await startServer({ overrides: { fetchImpl } });
@@ -329,5 +334,114 @@ test('móvil: sin desbordamiento horizontal y con todo accesible', { skip }, asy
   await page.waitForSelector('.feature-list');
   await shot(page, '09-movil-ajustes');
   assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('foto: tarjeta de presentación leída por el servidor y guardada en memoria al tocar «Recordar»', { skip }, async () => {
+  const { page, ctx, errors } = await openPage();
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'En línea');
+  const fields = { name: 'Ana Mora', company: 'Café del Valle', title: null, phone: '+506 8888 0000', email: 'ana@cafedelvalle.cr', website: 'cafedelvalle.cr', address: null };
+  openaiQueue.push({ status: 'completed', model: 'gpt-test', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ text: 'Ana Mora · Café del Valle', fields }) }] }] });
+  const before = openaiBodies.length;
+  await page.setInputFiles('#photo-input', join(import.meta.dirname, '..', '..', 'public', 'icons', 'icon-192.png'));
+  await page.waitForSelector('#attachment:not([hidden])');
+  await page.selectOption('#attachment-task', 'business_card');
+  await page.click('#send');
+  await page.waitForSelector('.card .fields');
+  const sent = openaiBodies[before];
+  const image = sent.input[0].content.find((c) => c.type === 'input_image');
+  assert.match(image.image_url, /^data:image\/jpeg;base64,\/9j\//, 'la foto llega como JPEG reducido');
+  assert.equal(sent.text.format.name, 'jarvis_business_card');
+  const card = await page.textContent('.card .fields');
+  assert.match(card, /NombreAna Mora/);
+  assert.match(card, /Cargono se lee/, 'lo que no aparece no se inventa');
+  assert.equal(await page.getAttribute('.card a.chip[href^="tel:"]', 'href'), 'tel:+50688880000');
+  await shot(page, '10-foto-tarjeta');
+  await page.click('.card button:has-text("Recordar")');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('jarvis.memory') || '[]').length === 1);
+  assert.match(JSON.parse(await page.evaluate(() => localStorage.getItem('jarvis.memory')))[0].content, /Teléfono: \+506 8888 0000/);
+  const history = await page.evaluate(() => JSON.parse(localStorage.getItem('jarvis.chat')).at(-1).text);
+  assert.match(history, /es un dato, no una instrucción/);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('dictado: graba con el micrófono, el servidor transcribe y el texto queda para revisar', { skip }, async () => {
+  const { page, ctx, errors } = await openPage();
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'En línea');
+  const before = transcribeForms.length;
+  await page.click('#dictate');
+  await page.waitForSelector('#dictate[aria-pressed="true"]');
+  await page.waitForTimeout(1500);
+  await page.click('#dictate');
+  await page.waitForFunction(() => document.getElementById('input').value.length > 0, null, { timeout: 15_000 });
+  assert.equal(await page.inputValue('#input'), 'Recuérdame comprar café mañana');
+  assert.equal(transcribeForms.length, before + 1);
+  const file = transcribeForms.at(-1).get('file');
+  assert.match(file.type, /audio\/(webm|ogg|mp4)/);
+  assert.ok(file.size > 1000, 'audio real del micrófono simulado');
+  assert.equal(transcribeForms.at(-1).get('language'), 'es');
+  assert.equal(await page.getAttribute('#dictate', 'aria-pressed'), 'false');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('clima desde el menú sin gastar IA', { skip }, async () => {
+  const { page, ctx } = await openPage();
+  const before = openaiBodies.length;
+  await page.click('.module[data-action="weather"]');
+  await page.waitForSelector('.card h3:has-text("Clima · San José")');
+  assert.equal(openaiBodies.length, before, 'no se llamó al modelo');
+  await ctx.close();
+});
+
+test('copia de seguridad: descarga sin token y restauración con confirmación', { skip }, async () => {
+  const { page, ctx } = await openPage();
+  await page.evaluate(() => {
+    localStorage.setItem('jarvis.memory', JSON.stringify([{ id: 1, content: 'Mi cumpleaños es el 5 de mayo' }]));
+    localStorage.setItem('jarvis.tasks', JSON.stringify([{ id: 1, title: 'Llamar al contador', done: false }]));
+  });
+  await page.click('.module[data-panel="settings"]');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Descargar copia")')]);
+  const path = await download.path();
+  const { readFileSync } = await import('node:fs');
+  const text = readFileSync(path, 'utf8');
+  const backup = JSON.parse(text);
+  assert.equal(backup.format, 'jarvis-web');
+  assert.equal(backup.memory[0].content, 'Mi cumpleaños es el 5 de mayo');
+  assert.doesNotMatch(text, new RegExp(TOKEN), 'el token no va en la copia');
+  await page.evaluate(() => {
+    localStorage.removeItem('jarvis.memory');
+    localStorage.removeItem('jarvis.tasks');
+  });
+  await page.setInputFiles('#panel-body input[type="file"]', path);
+  await page.waitForSelector('#confirm[open]');
+  await page.click('#confirm-ok');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('jarvis.tasks') || '[]').length === 1);
+  assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('jarvis.settings'))).token, TOKEN, 'restaurar conserva el token');
+  await ctx.close();
+});
+
+test('app instalable y sin conexión: service worker, iconos y respuestas locales', { skip }, async () => {
+  const { page, ctx, errors } = await openPage();
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10_000 }).catch(() => page.reload());
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json());
+  assert.ok(manifest.icons.some((i) => i.sizes === '512x512' && i.purpose === 'maskable'));
+  await page.waitForTimeout(500); // que la copia termine de guardarse
+  await ctx.setOffline(true);
+  await page.reload();
+  await page.waitForSelector('#offline:not([hidden])');
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'Sin servidor');
+  await sendChat(page, '¿Qué hora es?');
+  assert.match(await page.textContent('.msg.jarvis:last-child'), /Son las/);
+  await page.click('.module[data-panel="tasks"]');
+  await page.fill('input[name="title"]', 'Tarea sin conexión');
+  await page.click('#panel-body button[type="submit"]');
+  await page.waitForSelector('.item:has-text("Tarea sin conexión")');
+  await shot(page, '11-sin-conexion');
+  await ctx.setOffline(false);
+  assert.deepEqual(errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e)), []);
   await ctx.close();
 });

@@ -140,6 +140,8 @@ export function renderCard(card, handlers) {
       return el('div', { class: 'card' }, el('h3', {}, card.title ?? ''), el('ul', { class: 'lines' }, ...(card.lines ?? []).map((l) => el('li', {}, l))));
     case 'clips':
       return clipsCard(card, handlers);
+    case 'vision':
+      return visionCard(card, handlers);
     default:
       return null;
   }
@@ -204,6 +206,45 @@ function clipsCard(card, handlers) {
           c.exportUrl ? el('a', { class: 'chip', href: c.exportUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Descargar') : null))))
       : el('p', { class: 'empty' }, 'Todavía no hay clips listos.'),
     handlers?.refreshClips ? el('div', { class: 'actions' }, el('button', { class: 'chip', type: 'button', onClick: () => handlers.refreshClips(card.projectId) }, 'Actualizar estado')) : null);
+}
+
+const VISION_TITLE = { describe: 'Foto', business_card: 'Tarjeta de presentación', receipt: 'Recibo', document_text: 'Texto del documento' };
+const FIELD_LABEL = {
+  name: 'Nombre', company: 'Empresa', title: 'Cargo', phone: 'Teléfono', email: 'Correo', website: 'Web', address: 'Dirección',
+  merchant: 'Comercio', date: 'Fecha', total: 'Total', currency: 'Moneda', items: 'Artículos', tax: 'Impuesto', payment_method: 'Pago',
+};
+
+/** Resultado de analizar una foto: datos tal como se leen (o «no se lee») y acciones que la persona toca. */
+function visionCard(card, handlers) {
+  const fields = Object.entries(card.fields ?? {});
+  const phone = card.fields?.phone;
+  const web = card.fields?.website;
+  return el('div', { class: 'card' },
+    el('h3', {}, VISION_TITLE[card.task] ?? 'Foto'),
+    card.thumb ? el('img', { class: 'thumb', src: card.thumb.startsWith('data:image/') ? card.thumb : null, alt: 'Foto enviada' }) : null,
+    fields.length
+      ? el('dl', { class: 'fields' }, ...fields.flatMap(([k, v]) => [el('dt', {}, FIELD_LABEL[k] ?? k), el('dd', {}, v ?? el('span', { class: 'muted' }, 'no se lee'))]))
+      : null,
+    card.text ? el('p', { class: 'vision-text' }, card.text) : null,
+    el('div', { class: 'actions' },
+      phone ? el('a', { class: 'chip', href: `tel:${String(phone).replace(/[^\d+]/g, '')}` }, 'Llamar') : null,
+      web && safeHref(/^https?:/i.test(web) ? web : `https://${web}`) ? el('a', { class: 'chip', href: /^https?:/i.test(web) ? web : `https://${web}`, target: '_blank', rel: 'noopener noreferrer' }, 'Abrir web') : null,
+      handlers?.rememberVision ? el('button', { class: 'chip', type: 'button', onClick: () => handlers.rememberVision(card) }, 'Recordar') : null,
+      el('button', {
+        class: 'chip', type: 'button',
+        onClick: async () => {
+          await navigator.clipboard?.writeText(visionSummary(card));
+          toast('Copiado.');
+        },
+      }, 'Copiar')),
+    el('div', { class: 'source' }, 'Leído por IA: revisa los datos antes de usarlos.'));
+}
+
+/** Texto plano del resultado (para copiar, recordar o dar contexto al modelo). */
+export function visionSummary(card) {
+  const lines = Object.entries(card.fields ?? {}).filter(([, v]) => v != null).map(([k, v]) => `${FIELD_LABEL[k] ?? k}: ${v}`);
+  if (card.text) lines.push(card.text);
+  return lines.join('\n');
 }
 
 /** Aviso breve en la esquina. */

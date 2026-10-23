@@ -97,6 +97,49 @@ export const chatLog = {
   clear: () => write('chat', []),
 };
 
+const EXPORT_FORMAT = 'jarvis-web';
+
+/** Copia de seguridad de este navegador. El token del servidor NO se incluye (es un secreto). */
+export function exportData() {
+  const { token: _omit, ...prefs } = settings.get();
+  return {
+    format: EXPORT_FORMAT,
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: prefs,
+    memory: memory.all(),
+    tasks: tasks.all(),
+    clips: clipProjects.all(),
+    chat: chatLog.all(),
+  };
+}
+
+/** Restaura una copia (reemplaza memoria, tareas, clips y conversación; conserva el token). */
+export function importData(data) {
+  if (data?.format !== EXPORT_FORMAT || typeof data.version !== 'number') throw new Error('Ese archivo no es una copia de JARVIS Web.');
+  if (data.version > 1) throw new Error('La copia es de una versión más nueva de JARVIS Web.');
+  const list = (v, name) => {
+    if (v == null) return [];
+    if (!Array.isArray(v) || v.some((x) => typeof x !== 'object' || x === null)) throw new Error(`La sección «${name}» de la copia está dañada.`);
+    return v;
+  };
+  const okId = (x) => Number.isInteger(x.id) && x.id > 0;
+  const mem = list(data.memory, 'memoria').filter((m) => okId(m) && typeof m.content === 'string');
+  const tsk = list(data.tasks, 'tareas').filter((t) => okId(t) && typeof t.title === 'string');
+  const clips = list(data.clips, 'clips').filter((c) => typeof c.projectId === 'string');
+  const chat = list(data.chat, 'conversación').filter((e) => ['user', 'assistant'].includes(e.role) && typeof (e.text ?? '') === 'string');
+  memory.save(mem);
+  tasks.save(tsk);
+  write('clips', clips.slice(0, 30));
+  write('chat', chat.slice(-200));
+  if (data.settings && typeof data.settings === 'object') {
+    const { token: _ignored, ...prefs } = data.settings;
+    const allowed = Object.fromEntries(Object.entries(prefs).filter(([k]) => k in DEFAULT_SETTINGS));
+    settings.update(allowed);
+  }
+  return { memory: mem.length, tasks: tsk.length, clips: clips.length, chat: chat.length };
+}
+
 /** Borra todo lo guardado por JARVIS en este navegador. */
 export function wipeAll() {
   for (const k of Object.keys(localStorage)) if (k.startsWith(PREFIX)) localStorage.removeItem(k);

@@ -298,6 +298,7 @@ export class ToolBox {
   async weather(place) {
     const where = place || settings.get().weatherPlace || 'San José, Costa Rica';
     const name = where.split(',')[0].trim();
+    if (!navigator.onLine) return fail('offline', 'Sin conexión a Internet: no puedo consultar el clima ahora.');
     const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=es&format=json`).then((r) => r.json());
     const g = geo.results?.[0];
     if (!g) return fail('place_not_found', `No encontré el lugar «${where}».`);
