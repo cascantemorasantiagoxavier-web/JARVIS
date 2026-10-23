@@ -77,6 +77,19 @@ curl https://jarvis.tudominio.com/health
 
 ## D. Plataforma gestionada
 
+### Render (archivo `render.yaml` incluido)
+1. Sube el repositorio a GitHub y, en Render, **New → Blueprint** → elige el repositorio y la rama.
+2. Render lee `render.yaml` y pide los valores marcados `sync: false`: `OPENAI_API_KEY`,
+   `UN_COMTRADE_API_KEY`, `GOOGLE_MAPS_API_KEY`, `TAVILY_API_KEY` (opcional) y `OSM_CONTACT` (tu correo).
+   Si ya tienes un servicio con esas claves, cópialas desde su pestaña **Environment**.
+3. `JARVIS_CLIENT_TOKEN` lo genera Render: cópialo de **Environment** a la app (Ajustes → Servidor),
+   junto con la URL `https://<servicio>.onrender.com`.
+4. Comprueba `https://<servicio>.onrender.com/health`: dice qué funciones están activas, nunca las claves.
+
+El plan gratuito se duerme tras un rato sin uso; la primera petición puede tardar. Para la voz es mejor
+un plan de pago. Los contadores de uso se reinician con cada reinicio.
+
+### Otras plataformas
 - Directorio raíz del servicio: `backend`. Comando de inicio: `node src/server.js`.
 - Variables: cópialas de `.env.example` en el **panel de secretos** del proveedor (nunca en el
   repositorio). Añade `TRUST_PROXY=true`.

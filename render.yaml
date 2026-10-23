@@ -1,0 +1,32 @@
+# Servidor de J.A.R.V.I.S. en Render (Blueprint).
+# Las claves NUNCA van en este archivo: las variables con `sync: false` se rellenan en el panel de
+# Render al crear el servicio (o en Environment). JARVIS_CLIENT_TOKEN lo genera Render: cópialo en la
+# app (Ajustes → Servidor). Guía: docs/HOSTING.md, sección D.
+services:
+  - type: web
+    name: jarvis-servidor
+    runtime: node
+    plan: free # el plan gratuito se duerme: la primera petición tras un rato tarda; para voz, mejor uno de pago
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "true"
+      - key: JARVIS_CLIENT_TOKEN
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: UN_COMTRADE_API_KEY
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: OSM_CONTACT
+        sync: false
