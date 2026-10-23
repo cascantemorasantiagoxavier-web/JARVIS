@@ -98,6 +98,43 @@ data class Business(
 @Serializable
 data class CategoryInfo(val id: String, val label: String, val kind: String? = null)
 
+/** Fuentes cuyos datos no se guardan en el teléfono ni se muestran sobre el mapa de OpenStreetMap. */
+object RestrictedSources {
+    /** Google Maps (Places API): condiciones de uso de Google, ver ADR-016. */
+    const val GOOGLE = "google"
+    val all = setOf(GOOGLE)
+    const val NOTE = "Dato de Google Maps: no se guarda ni se muestra en el mapa de OpenStreetMap. Vuelve a verificar el negocio para verlo."
+}
+
+private fun <T> FieldValue<T>.withoutSources(blocked: Set<String>): FieldValue<T> {
+    if (sources.none { it in blocked } && alternatives.none { it.source in blocked }) return this
+    val kept = sources.filterNot { it in blocked }
+    val alts = alternatives.filterNot { it.source in blocked }
+    if (value != null && kept.isEmpty()) return FieldValue(null, FieldStatus.UNAVAILABLE, emptyList(), RestrictedSources.NOTE, alts)
+    // Un dato "verificado" o "contradictorio" solo por la fuente quitada vuelve a ser de una sola fuente.
+    val status = when {
+        status == FieldStatus.VERIFIED && kept.size < 2 -> FieldStatus.FOUND
+        status == FieldStatus.CONFLICT && alts.isEmpty() -> FieldStatus.FOUND
+        else -> status
+    }
+    return copy(sources = kept, status = status, alternatives = alts)
+}
+
+/**
+ * Copia sin los datos de fuentes restringidas (Google Maps). Se aplica antes de guardar un prospecto y
+ * antes de mostrar un negocio sobre el mapa de OpenStreetMap.
+ */
+fun Business.withoutRestrictedSources(blocked: Set<String> = RestrictedSources.all): Business {
+    if (sources.keys.none { it in blocked }) return this
+    return copy(
+        name = name.withoutSources(blocked), category = category.withoutSources(blocked), brand = brand.withoutSources(blocked),
+        address = address.withoutSources(blocked), province = province.withoutSources(blocked), canton = canton.withoutSources(blocked),
+        district = district.withoutSources(blocked), phone = phone.withoutSources(blocked), website = website.withoutSources(blocked),
+        email = email.withoutSources(blocked), openingHours = openingHours.withoutSources(blocked),
+        coordinates = coordinates.withoutSources(blocked), sources = sources.filterKeys { it !in blocked },
+    )
+}
+
 @Serializable
 data class AreaInfo(val name: String? = null, val displayName: String? = null, val osm: String? = null)
 

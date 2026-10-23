@@ -15,6 +15,7 @@ import com.example.jarvis.core.device.SaveResult
 import com.example.jarvis.core.json.bool
 import com.example.jarvis.core.json.double
 import com.example.jarvis.core.json.int
+import com.example.jarvis.core.json.ints
 import com.example.jarvis.core.json.jsonOf
 import com.example.jarvis.core.json.long
 import com.example.jarvis.core.json.str
@@ -31,6 +32,7 @@ import com.example.jarvis.core.net.NearSpec
 import com.example.jarvis.core.net.OpenFoodFactsClient
 import com.example.jarvis.core.net.ProductLookup
 import com.example.jarvis.core.net.ProductLookupResult
+import com.example.jarvis.core.net.TradeStatsRequest
 import com.example.jarvis.core.net.TranscribeRequest
 import com.example.jarvis.core.net.VisionRequest
 import com.example.jarvis.core.net.WebFetchRequest
@@ -85,6 +87,7 @@ class CoreToolset(private val d: ToolDeps) {
             "open_app" to ToolHandler { a, _ -> openApp(a.str("app")!!) },
             "get_weather" to ToolHandler { a, _ -> weather(a.str("place")) },
             "web_search" to ToolHandler { a, ctx -> webSearch(a.str("query")!!, a.int("max_results") ?: 8, a.strings("domains"), ctx) },
+            "trade_statistics" to ToolHandler { a, _ -> tradeStats(a.str("hs_code")!!, a.str("flow")!!, a.ints("years"), a.bool("by_partner") ?: true) },
             "fetch_page" to ToolHandler { a, _ -> fetchPage(a.str("url")!!) },
             "business_search" to ToolHandler { a, ctx -> businessSearch(a.str("category")!!, a.str("location"), a.bool("near_me") == true, a.int("radius_m"), a.int("limit") ?: 20, a.int("offset") ?: 0, ctx) },
             "business_details" to ToolHandler { a, ctx -> businessDetails(a.str("id")!!, ctx) },
@@ -228,6 +231,27 @@ class CoreToolset(private val d: ToolDeps) {
         )
         return ToolResult.ok("Encontré ${r.results.size} resultados con ${r.providerLabel}.$coverage", data, listOf(ResultCard.WebResults(r)))
     }
+
+    private suspend fun tradeStats(hsCode: String, flow: String, years: List<Int>, byPartner: Boolean): ToolResult {
+        val r = d.backend.tradeStats(TradeStatsRequest(hsCode, flow, years.ifEmpty { null }, byPartner))
+        val what = (if (flow == "import") "Importaciones" else "Exportaciones") + " de ${r.reporter ?: "Costa Rica"}, partida SA $hsCode" + (r.product?.let { " ($it)" } ?: "")
+        if (r.totals.isEmpty()) {
+            return ToolResult.ok("$what: UN Comtrade no tiene datos para esos años.", jsonOf("hs_code" to hsCode, "flow" to flow, "totals" to emptyList<Any>(), "warnings" to r.warnings))
+        }
+        val totals = r.totals.joinToString("; ") { "${it.year}: ${usd(it.valueUsd)}" }
+        val partners = r.topPartners.take(5).joinToString(", ") { "${it.partner} ${usd(it.valueUsd)}" }
+        val msg = "$what — $totals." + (if (partners.isNotEmpty()) " Principales socios en ${r.totals.first().year}: $partners." else "") +
+            " Fuente: UN Comtrade (USD declarados; no son precios)."
+        val data = jsonOf(
+            "hs_code" to hsCode, "flow" to flow, "reporter" to r.reporter, "product" to r.product,
+            "totals" to r.totals.map { mapOf("year" to it.year, "value_usd" to it.valueUsd, "basis" to it.basis) },
+            "top_partners" to r.topPartners.map { mapOf("partner" to it.partner, "value_usd" to it.valueUsd) },
+            "warnings" to r.warnings, "source" to (r.source?.url ?: "https://comtradeplus.un.org"), "retrieved_at" to r.retrievedAt,
+        )
+        return ToolResult.ok(msg, data, listOf(ResultCard.Info("Comercio exterior · SA $hsCode", r.totals.map { "${it.year}: ${usd(it.valueUsd)}" } + r.topPartners.take(5).map { "  ${it.partner}: ${usd(it.valueUsd)}" } + r.warnings)))
+    }
+
+    private fun usd(v: Long): String = "US$" + "%,d".format(java.util.Locale.US, v)
 
     private suspend fun fetchPage(url: String): ToolResult {
         val p = d.backend.fetchPage(WebFetchRequest(url, 6000))

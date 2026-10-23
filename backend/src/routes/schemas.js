@@ -69,6 +69,17 @@ export const BusinessSearchBody = z
 
 export const BusinessIdParams = z.object({ id: z.string().regex(/^osm:(node|way|relation):\d{1,15}$/) });
 
+const currentYear = new Date().getUTCFullYear();
+
+export const TradeStatsBody = z.object({
+  // Partida del Sistema Armonizado: capítulo (2), partida (4) o subpartida (6) dígitos, o TOTAL.
+  hsCode: z.string().trim().regex(/^(\d{2}|\d{4}|\d{6}|TOTAL)$/, 'Código SA de 2, 4 o 6 dígitos.'),
+  flow: z.enum(['import', 'export']),
+  years: z.array(z.number().int().min(1990).max(currentYear)).min(1).max(5).optional(),
+  byPartner: z.boolean().optional(),
+  reporterCode: z.number().int().min(1).max(999).optional(),
+});
+
 // Base64 estándar sin espacios. Límites alineados con shared/tools.json
 // (imagen ≤ 8 000 000 caracteres ≈ 6 MB; audio ≤ 15 000 000 ≈ 11 MB).
 const base64 = (max) => z.string().min(100).max(max).regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Base64 no válido.');

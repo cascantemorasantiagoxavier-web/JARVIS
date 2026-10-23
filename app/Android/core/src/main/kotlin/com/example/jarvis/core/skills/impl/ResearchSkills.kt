@@ -4,6 +4,7 @@ import com.example.jarvis.core.json.arr
 import com.example.jarvis.core.json.bool
 import com.example.jarvis.core.json.int
 import com.example.jarvis.core.json.jsonOf
+import com.example.jarvis.core.json.long
 import com.example.jarvis.core.json.str
 import com.example.jarvis.core.json.strings
 import com.example.jarvis.core.memory.TextRanker
@@ -177,13 +178,30 @@ class ImportExportResearchSkill : Skill {
 
     private val crOfficial = listOf("hacienda.go.cr", "procomer.com", "ministeriodesalud.go.cr", "meic.go.cr", "sfe.go.cr", "senasa.go.cr", "comex.go.cr")
 
+    /** Partidas del Sistema Armonizado de productos frecuentes en Costa Rica. Son sugerencias: se piden confirmar. */
+    private val hsHints = linkedMapOf(
+        "aceite de palma" to "1511", "dispositivos medicos" to "9018", "instrumentos medicos" to "9018",
+        "cafe" to "0901", "banano" to "0803", "banana" to "0803", "piña" to "080430", "pina" to "080430", "aguacate" to "080440",
+        "azucar" to "1701", "cacao" to "1801", "flores" to "0603", "yuca" to "071410",
+    )
+
+    private fun suggestHs(product: String): String? {
+        val p = " " + TextNormalizer.fold(product) + " "
+        return hsHints.entries.firstOrNull { (k, _) -> Regex("\\b${Regex.escape(k)}s?\\b").containsMatchIn(p) }?.value
+    }
+
     override suspend fun execute(input: JsonObject, ctx: SkillContext): SkillOutcome {
         ctx.requireServer("La investigación de comercio exterior")?.let { return it }
         val product = input.str("product")!!
         val direction = input.str("direction") ?: "import"
         val partner = input.str("country") ?: if (direction == "import") "China" else "Estados Unidos"
-        val aspects = input.strings("aspects").ifEmpty { listOf("manufacturers", "suppliers", "prices", "requirements", "tariffs") }
         val warnings = mutableListOf<String>()
+        val givenHs = input.str("hs_code")
+        val hsCode = givenHs ?: suggestHs(product)
+        val aspects = input.strings("aspects").ifEmpty {
+            listOf("manufacturers", "suppliers", "prices", "requirements", "tariffs") + if (hsCode != null) listOf("trade_stats") else emptyList()
+        }
+        val extraSources = mutableListOf<SkillSource>()
         val all = mutableListOf<WebHit>()
         val sections = linkedMapOf<String, List<Map<String, Any?>>>()
         var firstError: ToolResult? = null
@@ -219,20 +237,47 @@ class ImportExportResearchSkill : Skill {
             if (official.isEmpty()) warnings += "No encontré páginas oficiales en esta búsqueda: confirma los requisitos con PROCOMER, Hacienda o el ministerio correspondiente."
         }
         if ("tariffs" in aspects) sections["tariffs"] = rows(run("Aranceles", listOf("arancel $product Costa Rica partida arancelaria", "$product HS code tariff Costa Rica")))
+        if ("trade_stats" in aspects) {
+            if (hsCode == null) {
+                warnings += "Para las estadísticas oficiales de UN Comtrade indica la partida arancelaria (código SA de 4 o 6 dígitos)."
+            } else {
+                if (givenHs == null) warnings += "Usé la partida SA $hsCode sugerida para «$product»; confírmala en la clasificación arancelaria (TICA de Hacienda o PROCOMER)."
+                val r = ctx.tool("trade_statistics", jsonOf("hs_code" to hsCode, "flow" to direction, "by_partner" to true))
+                if (r.ok) {
+                    val d = r.data as JsonObject
+                    val stats = mutableListOf<Map<String, Any?>>()
+                    d.arr("totals")?.forEach { t -> val o = t.jsonObject; stats += mapOf("year" to o.int("year"), "value_usd" to o.long("value_usd"), "kind" to "total") }
+                    d.arr("top_partners")?.take(8)?.forEach { t -> val o = t.jsonObject; stats += mapOf("partner" to o.str("partner"), "value_usd" to o.long("value_usd"), "kind" to "socio") }
+                    sections["trade_stats"] = stats
+                    warnings += d.strings("warnings")
+                    extraSources += SkillSource("UN Comtrade — partida SA $hsCode", "https://comtradeplus.un.org", "estadística oficial", d.str("retrieved_at") ?: ctx.nowIso())
+                } else if (Outcome.isConfigError(r.errorCode)) {
+                    warnings += "Estadísticas oficiales no disponibles: el servidor no tiene UN_COMTRADE_API_KEY."
+                } else {
+                    warnings += "UN Comtrade: ${r.message}"
+                }
+            }
+        }
 
-        if (all.isEmpty() && firstError != null) return Outcome.fromTool(firstError!!, "La investigación")
+        if (all.isEmpty() && firstError != null && sections["trade_stats"].isNullOrEmpty()) return Outcome.fromTool(firstError!!, "La investigación")
         val nextSteps = ctx.tryModel(
             "Con estos resultados, propone 5 pasos concretos para ${if (direction == "import") "importar a Costa Rica" else "exportar desde Costa Rica"} \"$product\". Cita las URL. No inventes costos ni requisitos.",
             sections.entries.joinToString("\n") { (k, v) -> "$k:\n" + v.joinToString("\n") { it.toString() } }.take(12_000), warnings, "Los pasos sugeridos con IA",
         )
         warnings += "Los precios son los publicados en la web (pueden estar desactualizados o excluir envío e impuestos); no son cotizaciones."
-        val data = jsonOf("product" to product, "direction" to direction, "partner_country" to partner, "sections" to sections, "next_steps" to nextSteps, "used_model" to (nextSteps != null))
+        val data = jsonOf("product" to product, "direction" to direction, "partner_country" to partner, "hs_code" to hsCode, "hs_code_confirmed" to (givenHs != null), "sections" to sections, "next_steps" to nextSteps, "used_model" to (nextSteps != null))
         val msg = "Investigué ${if (direction == "import") "la importación" else "la exportación"} de $product: " + sections.entries.joinToString(", ") { "${it.value.size} ${label(it.key)}" } + "."
-        val cards = listOf(ResultCard.Info("Comercio exterior: $product", sections.flatMap { (k, v) -> listOf("${label(k).replaceFirstChar { it.uppercase() }}:") + v.take(4).map { "  • " + (it["formatted"]?.let { f -> "$f — " } ?: "") + (it["title"] ?: it["text"]) + " (${Web.host(it["url"] as String)})" } } + listOfNotNull(nextSteps)))
-        return Outcome.done(msg, data, all.distinctBy { it.url }.take(20).map(Web::source), warnings, cards)
+        val cards = listOf(ResultCard.Info("Comercio exterior: $product", sections.flatMap { (k, v) -> listOf("${label(k).replaceFirstChar { it.uppercase() }}:") + v.take(4).map { "  • " + line(it) } } + listOfNotNull(nextSteps)))
+        return Outcome.done(msg, data, extraSources + all.distinctBy { it.url }.take(20).map(Web::source), warnings, cards)
     }
 
-    private fun label(k: String) = mapOf("manufacturers" to "fabricantes", "suppliers" to "proveedores", "prices" to "precios publicados", "requirements" to "requisitos", "tariffs" to "referencias arancelarias")[k] ?: k
+    private fun line(it: Map<String, Any?>): String = when (it["kind"]) {
+        "total" -> "${it["year"]}: US$${"%,d".format(java.util.Locale.US, it["value_usd"] as Long? ?: 0L)} (UN Comtrade)"
+        "socio" -> "${it["partner"]}: US$${"%,d".format(java.util.Locale.US, it["value_usd"] as Long? ?: 0L)}"
+        else -> (it["formatted"]?.let { f -> "$f — " } ?: "") + (it["title"] ?: it["text"]) + " (${Web.host(it["url"] as String)})"
+    }
+
+    private fun label(k: String) = mapOf("manufacturers" to "fabricantes", "suppliers" to "proveedores", "prices" to "precios publicados", "requirements" to "requisitos", "tariffs" to "referencias arancelarias", "trade_stats" to "estadísticas oficiales (UN Comtrade)")[k] ?: k
 }
 
 // ============================================================ price_comparison

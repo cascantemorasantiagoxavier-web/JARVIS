@@ -8,6 +8,7 @@ import {
   ChatBody,
   RealtimeCallBody,
   RealtimeSessionBody,
+  TradeStatsBody,
   TranscribeBody,
   VisionBody,
   WebFetchBody,
@@ -21,7 +22,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(nex
 export const MEDIA_ROUTES = /^\/api\/(vision|audio)\//;
 const mediaJson = express.json({ limit: '16mb' });
 
-export function healthRouter({ config, realtime, chat, webSearch, media }) {
+export function healthRouter({ config, realtime, chat, webSearch, media, trade, business }) {
   const r = Router();
   r.get('/health', (_req, res) => {
     res.json({
@@ -37,13 +38,15 @@ export function healthRouter({ config, realtime, chat, webSearch, media }) {
         business: true,
         vision: media.enabled,
         transcription: media.enabled && Boolean(config.openai.media.transcribeModel),
+        trade: trade.enabled,
+        googlePlaces: business.googlePlacesEnabled,
       },
     });
   });
   return r;
 }
 
-export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, config }) {
+export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, trade, config }) {
   const r = Router();
 
   r.post('/realtime/session', validate(RealtimeSessionBody), wrap(async (req, res) => {
@@ -64,6 +67,8 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
       chat: { today: usage.chatRequestsToday(), maxPerDay: config.openai.text.maxRequestsPerDay },
       vision: { today: usage.mediaToday('vision'), maxPerDay: config.openai.media.maxVisionPerDay },
       transcription: { today: usage.mediaToday('transcribe'), maxPerDay: config.openai.media.maxTranscriptionsPerDay },
+      trade: { today: usage.tradeToday(), maxPerDay: config.trade.maxPerDay },
+      googlePlaces: { today: usage.placesToday(), maxPerDay: config.google.placesMaxPerDay },
       note: 'Contadores en memoria del servidor; se reinician al reiniciar el backend. El gasto real se consulta en el panel de OpenAI.',
     });
   });
@@ -78,6 +83,10 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
 
   r.post('/audio/transcribe', mediaJson, validate(TranscribeBody), wrap(async (req, res) => {
     res.json(await media.transcribe(req.valid.body));
+  }));
+
+  r.post('/trade/stats', validate(TradeStatsBody), wrap(async (req, res) => {
+    res.json(await trade.stats(req.valid.body));
   }));
 
   r.post('/web/search', validate(WebSearchBody), wrap(async (req, res) => {

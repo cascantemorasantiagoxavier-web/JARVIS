@@ -86,7 +86,8 @@ class ProspectService(private val repo: ProspectRepository, private val now: () 
     /** Evita duplicados: un negocio (id de fuente) solo se guarda una vez. */
     suspend fun save(b: Business, note: String? = null, nextAction: String? = null): SaveProspectResult {
         repo.findByBusinessId(b.id)?.let { return SaveProspectResult.AlreadyExists(it) }
-        val p = Prospect.fromBusiness(b, now(), note, nextAction)
+        // Los datos de Google Maps no se guardan de forma permanente (ADR-016).
+        val p = Prospect.fromBusiness(b.withoutRestrictedSources(), now(), note, nextAction)
         val id = repo.insert(p)
         return SaveProspectResult.Saved(p.copy(id = id))
     }

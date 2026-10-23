@@ -33,6 +33,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.example.jarvis.AppContainer
 import com.example.jarvis.BuildConfig
 import com.example.jarvis.core.business.Business
+import com.example.jarvis.core.business.withoutRestrictedSources
 import com.example.jarvis.core.business.FieldStatus
 import com.example.jarvis.data.repo.toModel
 import com.example.jarvis.ui.cards.BusinessAction
@@ -67,11 +68,12 @@ fun MapScreen(c: AppContainer, ids: List<String>, showProspects: Boolean, action
     var selected by remember { mutableStateOf<Business?>(null) }
 
     LaunchedEffect(ids, showProspects) {
+        // Mapa de OpenStreetMap: los datos de Google Maps no se muestran aquí (ADR-016).
         businesses = if (showProspects) {
             withContext(Dispatchers.IO) { c.db.prospects().all().map { it.toModel() } }.mapNotNull { it.snapshot() }
         } else {
             ids.mapNotNull { id -> c.working.business(id) ?: runCatching { c.backend.business(id) }.getOrNull() }
-        }
+        }.map { it.withoutRestrictedSources() }
     }
     val withCoords = businesses.filter { it.mapPoint != null }
     val missing = businesses.size - withCoords.size

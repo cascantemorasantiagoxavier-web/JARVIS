@@ -65,6 +65,9 @@ class BackendClient(
 
     suspend fun chat(req: ChatRequest): ChatResponse = post("/api/chat", req, ChatRequest.serializer(), ChatResponse.serializer())
 
+    suspend fun tradeStats(req: TradeStatsRequest): TradeStatsResponse =
+        post("/api/trade/stats", req, TradeStatsRequest.serializer(), TradeStatsResponse.serializer())
+
     suspend fun webSearch(req: WebSearchRequest): WebSearchResult =
         post("/api/web/search", req, WebSearchRequest.serializer(), WebSearchResult.serializer())
 

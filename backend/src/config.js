@@ -70,6 +70,17 @@ const EnvSchema = z.object({
   BUSINESS_DEFAULT_COUNTRY: z.string().optional().default('cr'),
   BUSINESS_CACHE_TTL_SECONDS: int(3600, 0, 86400 * 7),
 
+  // Comercio exterior (UN Comtrade). Clave del producto gratuito "comtrade - v1".
+  UN_COMTRADE_API_KEY: optionalString,
+  COMTRADE_BASE_URL: z.string().optional().default('https://comtradeapi.un.org'),
+  COMTRADE_MAX_REQUESTS_PER_DAY: int(200, 1, 100000),
+
+  // Google Maps Platform: solo Places API (New) para verificar negocios. Servicio de pago con
+  // cuota gratuita mensual; desactivado si no hay clave.
+  GOOGLE_MAPS_API_KEY: optionalString,
+  GOOGLE_PLACES_BASE_URL: z.string().optional().default('https://places.googleapis.com'),
+  GOOGLE_PLACES_MAX_REQUESTS_PER_DAY: int(30, 1, 100000),
+
   RATE_LIMIT_PER_MINUTE: int(60, 1, 100000),
   OUTBOUND_TIMEOUT_MS: int(20000, 1000, 120000),
 });
@@ -135,6 +146,16 @@ export function loadConfig(env = process.env) {
       contact: e.OSM_CONTACT,
       defaultCountry: e.BUSINESS_DEFAULT_COUNTRY.toLowerCase(),
       cacheTtlSeconds: e.BUSINESS_CACHE_TTL_SECONDS,
+    }),
+    trade: Object.freeze({
+      comtradeKey: e.UN_COMTRADE_API_KEY,
+      comtradeBaseUrl: e.COMTRADE_BASE_URL.replace(/\/+$/, ''),
+      maxPerDay: e.COMTRADE_MAX_REQUESTS_PER_DAY,
+    }),
+    google: Object.freeze({
+      mapsKey: e.GOOGLE_MAPS_API_KEY,
+      placesBaseUrl: e.GOOGLE_PLACES_BASE_URL.replace(/\/+$/, ''),
+      placesMaxPerDay: e.GOOGLE_PLACES_MAX_REQUESTS_PER_DAY,
     }),
     rateLimitPerMinute: e.RATE_LIMIT_PER_MINUTE,
     outboundTimeoutMs: e.OUTBOUND_TIMEOUT_MS,

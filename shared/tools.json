@@ -39,6 +39,12 @@
       "parameters": {"type": "object", "properties": {"place": {"type": "string", "maxLength": 80}}, "additionalProperties": false}
     },
     {
+      "name": "trade_statistics",
+      "description": "Estadísticas oficiales de comercio exterior (UN Comtrade): valor en USD de importaciones o exportaciones de Costa Rica por partida del Sistema Armonizado y año, con los principales países socios. Requiere el código SA (2, 4 o 6 dígitos). No son precios ni cotizaciones.",
+      "site": "backend", "confirm": false, "permissions": [], "risk": "read",
+      "parameters": {"type": "object", "properties": {"hs_code": {"type": "string", "pattern": "^([0-9]{2}|[0-9]{4}|[0-9]{6}|TOTAL)$"}, "flow": {"type": "string", "enum": ["import", "export"]}, "years": {"type": "array", "items": {"type": "integer", "minimum": 1990, "maximum": 2100}, "maxItems": 5}, "by_partner": {"type": "boolean"}}, "required": ["hs_code", "flow"], "additionalProperties": false}
+    },
+    {
       "name": "web_search",
       "description": "Búsqueda web real con fuentes (título, URL, fragmento, fecha). Obligatoria para datos actuales, precios, trámites o noticias. 'domains' restringe a sitios concretos (p. ej. hacienda.go.cr).",
       "site": "backend", "confirm": false, "permissions": [], "risk": "read",
@@ -64,7 +70,7 @@
     },
     {
       "name": "business_verify",
-      "description": "Contrasta teléfono y correo de un negocio con su sitio web oficial o devuelve candidatos web sin verificar.",
+      "description": "Contrasta teléfono, correo y sitio web de un negocio con su sitio oficial y, si el servidor tiene Google Maps, con Google Places (solo si nombre y ubicación coinciden). Devuelve candidatos sin verificar cuando no hay coincidencia segura.",
       "site": "backend", "confirm": false, "permissions": [], "risk": "read",
       "parameters": {"type": "object", "properties": {"id": {"type": "string", "maxLength": 40}}, "required": ["id"], "additionalProperties": false}
     },

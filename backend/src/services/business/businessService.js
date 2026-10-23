@@ -5,23 +5,29 @@ import { TtlCache } from '../cache.js';
 import { extractPage } from '../search/pageExtractor.js';
 import { normalizeCrPhone } from '../search/pageExtractor.js';
 import { resolveCategory } from './categories.js';
+import { GOOGLE_NOTICE, GOOGLE_SOURCE_ID, matchPlace, normalizeUrl } from './googlePlaces.js';
 import { buildAdminQuery, buildByIdQuery, buildPoiQuery, parseAdminOutput, pickArea } from './osmClients.js';
 import { applyAdmin, dedupeBusinesses, field, normalizeElement, sortBusinesses } from './normalize.js';
 
 const COUNTRY_NAMES = { cr: 'Costa Rica' };
 
 export class BusinessSearchService {
-  constructor({ nominatim, overpass, pageFetcher, webSearch, logger, config, now = () => new Date() }) {
+  constructor({ nominatim, overpass, pageFetcher, webSearch, googlePlaces = null, logger, config, now = () => new Date() }) {
     this.nominatim = nominatim;
     this.overpass = overpass;
     this.pageFetcher = pageFetcher;
     this.webSearch = webSearch;
+    this.googlePlaces = googlePlaces;
     this.logger = logger;
     this.country = config.osm.defaultCountry;
     this.now = now;
     const ttl = config.osm.cacheTtlSeconds * 1000;
     this.searchCache = new TtlCache(100, ttl);
     this.businessCache = new TtlCache(3000, ttl);
+  }
+
+  get googlePlacesEnabled() {
+    return Boolean(this.googlePlaces);
   }
 
   async resolveArea(location) {
@@ -153,8 +159,71 @@ export class BusinessSearchService {
     } else {
       report.warnings.push('Sin sitio web en la fuente y sin proveedor de búsqueda web configurado.');
     }
+    if (this.googlePlaces) await this.checkWithGoogle(b, report, retrievedAt);
     this.businessCache.set(id, b);
     return { business: b, report, retrievedAt };
+  }
+
+  /** Segunda fuente: Google Maps. Solo se cruza si el nombre y la posición coinciden con seguridad. */
+  async checkWithGoogle(b, report, retrievedAt) {
+    const name = b.name.value;
+    if (!name) return;
+    const coords = b.coordinates.value ? { lat: b.coordinates.value.lat, lon: b.coordinates.value.lon } : null;
+    const textQuery = [name, b.canton.value, b.province.value, 'Costa Rica'].filter(Boolean).join(' ');
+    let places;
+    try {
+      places = await this.googlePlaces.searchText({ textQuery, center: coords });
+    } catch (err) {
+      report.warnings.push(`Google Maps no disponible: ${err instanceof AppError ? err.message : 'error'}`);
+      return;
+    }
+    const match = matchPlace(name, coords, places);
+    if (!match) {
+      if (places.length) {
+        report.candidates.push(
+          ...places.slice(0, 3).map((p) => ({
+            title: p.name,
+            url: p.mapsUrl,
+            snippet: p.address,
+            source: 'Google Maps',
+            status: 'candidate',
+            note: coords
+              ? 'No coincide con seguridad (nombre o distancia): revísalo antes de usarlo.'
+              : 'El negocio no tiene coordenadas en OpenStreetMap: no se puede confirmar que sea el mismo.',
+          })),
+        );
+      } else {
+        report.warnings.push('Google Maps no encontró este negocio.');
+      }
+      return;
+    }
+    b.sources[GOOGLE_SOURCE_ID] = { name: 'Google Maps', url: match.mapsUrl, license: GOOGLE_NOTICE, retrievedAt };
+    report.checked.push({
+      source: 'Google Maps',
+      placeId: match.placeId,
+      distanceM: match.distanceM,
+      phones: match.phone ? [match.phone] : [],
+      website: match.website,
+    });
+    b.phone = crossCheck(b.phone, match.phone ? [match.phone] : [], GOOGLE_SOURCE_ID, (v) => normalizeCrPhone(v) ?? v);
+    if (match.website) {
+      // Se guarda la URL tal cual; la forma normalizada solo sirve para comparar.
+      const cur = b.website;
+      if (!cur.value) {
+        b.website = field(match.website, 'found', [GOOGLE_SOURCE_ID]);
+      } else if (normalizeUrl(cur.value) === normalizeUrl(match.website)) {
+        b.website = { ...cur, status: 'verified', sources: [...new Set([...cur.sources, GOOGLE_SOURCE_ID])] };
+      } else {
+        // Si su propio sitio ya lo verificó, no se rebaja: se anota la alternativa.
+        b.website = {
+          ...cur,
+          status: cur.status === 'verified' ? 'verified' : 'conflict',
+          alternatives: [...(cur.alternatives ?? []), { value: match.website, source: GOOGLE_SOURCE_ID }],
+        };
+      }
+    }
+    if (match.businessStatus === 'CLOSED_PERMANENTLY') report.warnings.push('Google Maps indica que este negocio cerró definitivamente.');
+    if (match.businessStatus === 'CLOSED_TEMPORARILY') report.warnings.push('Google Maps indica que este negocio está cerrado temporalmente.');
   }
 }
 

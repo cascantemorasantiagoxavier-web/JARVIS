@@ -1,13 +1,14 @@
 {
   "id": "import_export_research",
   "name": "Investigación de importación y exportación",
-  "description": "Para un producto: fabricantes y proveedores, precios publicados (con fuente, sin inventar), requisitos oficiales en Costa Rica (PROCOMER, Hacienda, Salud, SFE…) y referencias arancelarias, con pasos sugeridos.",
+  "description": "Para un producto: fabricantes y proveedores, precios publicados (con fuente, sin inventar), requisitos oficiales en Costa Rica (PROCOMER, Hacienda, Salud, SFE…), referencias arancelarias y estadísticas oficiales de comercio de UN Comtrade (con el código SA), con pasos sugeridos.",
   "category": "negocio",
   "exampleUtterances": [
     "investiga cómo importar bombillos led desde China",
     "quiero exportar piña a Estados Unidos, qué requisitos hay",
     "busca fabricantes y precios de bolsas biodegradables para importar",
-    "requisitos para importar cosméticos a Costa Rica"
+    "requisitos para importar cosméticos a Costa Rica",
+    "cuánto café exporta Costa Rica y a qué países"
   ],
   "inputSchema": {
     "type": "object",
@@ -28,6 +29,10 @@
         "type": "string",
         "maxLength": 60
       },
+      "hs_code": {
+        "type": "string",
+        "pattern": "^([0-9]{2}|[0-9]{4}|[0-9]{6})$"
+      },
       "aspects": {
         "type": "array",
         "items": {
@@ -37,10 +42,11 @@
             "suppliers",
             "prices",
             "requirements",
-            "tariffs"
+            "tariffs",
+            "trade_stats"
           ]
         },
-        "maxItems": 5
+        "maxItems": 6
       }
     },
     "required": [
@@ -74,7 +80,8 @@
   },
   "tools": [
     "web_search",
-    "fetch_page"
+    "fetch_page",
+    "trade_statistics"
   ],
   "requiredPermissions": [],
   "optionalPermissions": [],
@@ -84,14 +91,14 @@
   ],
   "optionalServices": [],
   "model": "optional",
-  "cost": "Hasta ~10 búsquedas y 2 lecturas; pasos con IA: tokens del modelo.",
+  "cost": "Hasta ~10 búsquedas, 2 lecturas y 1 consulta a UN Comtrade (gratuita con cuota diaria); pasos con IA: tokens del modelo.",
   "risk": "read",
   "limits": {
     "timeoutSeconds": 240,
-    "maxToolCalls": 14
+    "maxToolCalls": 15
   },
   "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
-  "errorHandling": "Sin fuentes oficiales → lo advierte y recomienda confirmar con la institución. Precios: solo los publicados, marcados como no cotizaciones.",
+  "errorHandling": "Sin fuentes oficiales → lo advierte y recomienda confirmar con la institución. Precios: solo los publicados, marcados como no cotizaciones. Sin código SA conocido o sin UN_COMTRADE_API_KEY en el servidor → sigue sin estadísticas y lo dice.",
   "maturity": "implemented",
   "missing": [],
   "privacy": "Solo el producto y los países viajan al buscador.",

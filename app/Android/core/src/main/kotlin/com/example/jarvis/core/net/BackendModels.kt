@@ -168,3 +168,36 @@ data class TranscribeRequest(val audioBase64: String, val mimeType: String, val 
 
 @Serializable
 data class TranscribeResponse(val text: String, val language: String? = null, val model: String? = null)
+
+// ---- Comercio exterior (UN Comtrade) ----
+
+@Serializable
+data class TradeStatsRequest(
+    val hsCode: String,
+    val flow: String,
+    val years: List<Int>? = null,
+    val byPartner: Boolean? = null,
+)
+
+@Serializable
+data class TradeTotal(val year: Int, val valueUsd: Long, val basis: String? = null)
+
+@Serializable
+data class TradePartner(val partner: String, val partnerCode: Int? = null, val valueUsd: Long)
+
+@Serializable
+data class TradeSource(val name: String, val url: String? = null, val note: String? = null)
+
+@Serializable
+data class TradeStatsResponse(
+    val reporter: String? = null,
+    val product: String? = null,
+    val flowLabel: String? = null,
+    val totals: List<TradeTotal> = emptyList(),
+    val topPartners: List<TradePartner> = emptyList(),
+    val records: Int = 0,
+    val warnings: List<String> = emptyList(),
+    val source: TradeSource? = null,
+    val retrievedAt: String? = null,
+    val cached: Boolean = false,
+)

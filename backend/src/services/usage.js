@@ -6,6 +6,8 @@ export class UsageTracker {
     this.realtime = [];
     this.chat = [];
     this.media = { vision: [], transcribe: [] };
+    this.trade = [];
+    this.places = [];
   }
 
   prune(list, windowMs) {
@@ -40,5 +42,23 @@ export class UsageTracker {
   mediaToday(kind) {
     this.prune(this.media[kind], 86_400_000);
     return this.media[kind].length;
+  }
+
+  recordTrade() {
+    this.trade.push(this.now());
+  }
+
+  tradeToday() {
+    this.prune(this.trade, 86_400_000);
+    return this.trade.length;
+  }
+
+  recordPlaces() {
+    this.places.push(this.now());
+  }
+
+  placesToday() {
+    this.prune(this.places, 86_400_000);
+    return this.places.length;
   }
 }

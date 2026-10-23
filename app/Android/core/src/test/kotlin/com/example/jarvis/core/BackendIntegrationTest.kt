@@ -72,6 +72,10 @@ class BackendIntegrationTest {
                         path == "/v1/responses" && body.contains("input_image") ->
                             json("""{"status":"completed","model":"gpt-5.4-mini","output":[{"type":"message","content":[{"type":"output_text","text":"{\"text\":\"Ana Mora · Café Volcán\",\"fields\":{\"name\":\"Ana Mora\",\"company\":\"Café Volcán\",\"title\":null,\"phone\":\"+506 2222 3333\",\"email\":\"ana@cafevolcan.cr\",\"website\":null,\"address\":\"\"}}"}]}]}""")
                         path == "/v1/audio/transcriptions" -> json("""{"text":"Recuérdame llamar al contador mañana a las 10"}""")
+                        path.startsWith("/data/v1/get/C/A/HS?") -> json("""{"count":3,"data":[
+                          {"period":2024,"reporterCode":188,"reporterDesc":"Costa Rica","flowCode":"X","flowDesc":"Export","partnerCode":0,"partnerDesc":"World","cmdCode":"0901","cmdDesc":"Coffee","primaryValue":350000000.0},
+                          {"period":2024,"reporterCode":188,"reporterDesc":"Costa Rica","flowCode":"X","flowDesc":"Export","partnerCode":842,"partnerDesc":"USA","cmdCode":"0901","cmdDesc":"Coffee","primaryValue":150000000.0},
+                          {"period":2024,"reporterCode":188,"reporterDesc":"Costa Rica","flowCode":"X","flowDesc":"Export","partnerCode":56,"partnerDesc":"Belgium","cmdCode":"0901","cmdDesc":"Coffee","primaryValue":60000000.0}]}""")
                         path == "/v1/realtime/client_secrets" -> json("""{"value":"ek_integration","expires_at":1900000000,"session":{"type":"realtime"}}""")
                         path == "/v1/realtime/calls" -> MockResponse().setResponseCode(201).setHeader("location", "/v1/realtime/calls/rtc_int1").setBody("v=0\r\ns=answer\r\n")
                         path == "/v1/responses" && body.contains("function_call_output") ->
@@ -105,6 +109,7 @@ class BackendIntegrationTest {
                 put("JARVIS_CLIENT_TOKEN", TOKEN); put("OPENAI_API_KEY", OPENAI_KEY)
                 put("OPENAI_BASE_URL", "$up/v1"); put("OVERPASS_URL", "$up/api/interpreter"); put("NOMINATIM_URL", up)
                 put("SEARCH_PROVIDERS", "searxng"); put("SEARXNG_URL", up); put("OSM_CONTACT", "integration-test"); put("LOG_LEVEL", "warn")
+                put("UN_COMTRADE_API_KEY", "comtrade-integration-key"); put("COMTRADE_BASE_URL", up)
             }
             node = pb.start()
             baseUrl = "http://127.0.0.1:$port"
@@ -188,6 +193,17 @@ class BackendIntegrationTest {
     }
 
     private fun JsonObject.txt(k: String) = this[k]?.jsonPrimitive?.content
+
+    @Test fun tradeStatisticsThroughRealBackend() = runBlocking {
+        val r = client().tradeStats(com.example.jarvis.core.net.TradeStatsRequest("0901", "export", listOf(2024)))
+        assertEquals("Costa Rica", r.reporter)
+        assertEquals(350_000_000L, r.totals.single().valueUsd)
+        assertEquals(listOf("USA", "Belgium"), r.topPartners.map { it.partner })
+        val upstream = seen.last { it.path.orEmpty().startsWith("/data/v1/get/C/A/HS?") }
+        assertEquals("comtrade-integration-key", upstream.getHeader("Ocp-Apim-Subscription-Key"))
+        assertTrue(upstream.path!!.contains("reporterCode=188") && upstream.path!!.contains("flowCode=X"))
+        assertFalse(upstream.path!!.contains("comtrade-integration-key"))
+    }
 
     /** Imagen y audio sintéticos: solo la cabecera es real (el servidor comprueba el tipo por sus bytes). */
     private fun jpeg() = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte()) + ByteArray(400)

@@ -37,6 +37,11 @@ Abre `backend/.env` con un editor y rellena:
 | `OPENAI_API_KEY` | Tu clave de OpenAI. **Solo aquí.** |
 | `OSM_CONTACT` | Tu correo o web (lo exige la política de uso de OpenStreetMap). |
 | `SEARXNG_URL` / `TAVILY_API_KEY` / `BRAVE_API_KEY` | Opcional: al menos uno para búsqueda web completa. Sin ninguno solo queda Wikipedia. |
+| `UN_COMTRADE_API_KEY` | Opcional: estadísticas oficiales de importación y exportación (UN Comtrade, gratis con cuota diaria). |
+| `GOOGLE_MAPS_API_KEY` | Opcional: segunda fuente al verificar negocios (Google Places API (New); de pago con cuota gratuita). Activa "Places API (New)" en tu proyecto de Google Cloud y restringe la clave a esa API. |
+
+Las demás APIs de Google Cloud (BigQuery, Cloud Storage, Logging, Monitoring, Calendar con clave
+simple…) no se usan: JARVIS no las necesita. Ver `../JARVIS-KB/07-RESEARCH/apis-del-usuario.md`.
 
 El resto tiene valores por defecto razonables (modelo `gpt-realtime-2.1-mini`, voz `cedar`, límites
 de 20 sesiones de voz por hora y 60 por día).

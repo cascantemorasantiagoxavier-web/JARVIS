@@ -54,6 +54,8 @@ object SchemaValidator {
                 val s = p.content
                 (schema["minLength"] as? JsonPrimitive)?.intOrNull?.let { if (s.length < it) errors += "$path es demasiado corto" }
                 (schema["maxLength"] as? JsonPrimitive)?.intOrNull?.let { if (s.length > it) errors += "$path es demasiado largo" }
+                // Como JSON Schema: búsqueda sin anclar; el patrón lleva ^…$ si exige coincidencia completa.
+                (schema["pattern"] as? JsonPrimitive)?.content?.let { if (!Regex(it).containsMatchIn(s)) errors += "$path no tiene el formato esperado" }
                 checkEnum(schema, p, path, errors)
             }
             "integer" -> {

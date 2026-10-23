@@ -27,6 +27,8 @@ fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
 fun JsonObject.arr(key: String): JsonArray? = this[key] as? JsonArray
 fun JsonObject.strings(key: String): List<String> =
     arr(key)?.mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }.orEmpty()
+fun JsonObject.ints(key: String): List<Int> =
+    arr(key)?.mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> !p.isString }?.intOrNull }.orEmpty()
 
 /** Constructor compacto de objetos JSON: jsonOf("ok" to true, "n" to 3). */
 fun jsonOf(vararg pairs: Pair<String, Any?>): JsonObject = JsonObject(pairs.associate { (k, v) -> k to toJson(v) })
