@@ -28,5 +28,7 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      - key: OPUSCLIP_API_KEY
+        sync: false
       - key: OSM_CONTACT
         sync: false

@@ -81,6 +81,12 @@ const EnvSchema = z.object({
   GOOGLE_PLACES_BASE_URL: z.string().optional().default('https://places.googleapis.com'),
   GOOGLE_PLACES_MAX_REQUESTS_PER_DAY: int(30, 1, 100000),
 
+  // Clips de video (OpusClip). La publicación en YouTube usa las cuentas conectadas en OpusClip.
+  OPUSCLIP_API_KEY: optionalString,
+  OPUSCLIP_BASE_URL: z.string().optional().default('https://api.opus.pro'),
+  OPUSCLIP_MAX_PROJECTS_PER_DAY: int(5, 1, 1000),
+  OPUSCLIP_MAX_POSTS_PER_DAY: int(10, 1, 1000),
+
   RATE_LIMIT_PER_MINUTE: int(60, 1, 100000),
   OUTBOUND_TIMEOUT_MS: int(20000, 1000, 120000),
 });
@@ -156,6 +162,12 @@ export function loadConfig(env = process.env) {
       mapsKey: e.GOOGLE_MAPS_API_KEY,
       placesBaseUrl: e.GOOGLE_PLACES_BASE_URL.replace(/\/+$/, ''),
       placesMaxPerDay: e.GOOGLE_PLACES_MAX_REQUESTS_PER_DAY,
+    }),
+    clips: Object.freeze({
+      opusKey: e.OPUSCLIP_API_KEY,
+      opusBaseUrl: e.OPUSCLIP_BASE_URL.replace(/\/+$/, ''),
+      maxProjectsPerDay: e.OPUSCLIP_MAX_PROJECTS_PER_DAY,
+      maxPostsPerDay: e.OPUSCLIP_MAX_POSTS_PER_DAY,
     }),
     rateLimitPerMinute: e.RATE_LIMIT_PER_MINUTE,
     outboundTimeoutMs: e.OUTBOUND_TIMEOUT_MS,

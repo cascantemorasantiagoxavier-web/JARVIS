@@ -8,6 +8,7 @@ export class UsageTracker {
     this.media = { vision: [], transcribe: [] };
     this.trade = [];
     this.places = [];
+    this.clips = { projects: [], posts: [] };
   }
 
   prune(list, windowMs) {
@@ -55,6 +56,16 @@ export class UsageTracker {
 
   recordPlaces() {
     this.places.push(this.now());
+  }
+
+  /** kind: "projects" | "posts". */
+  recordClips(kind) {
+    this.clips[kind].push(this.now());
+  }
+
+  clipsToday(kind) {
+    this.prune(this.clips[kind], 86_400_000);
+    return this.clips[kind].length;
   }
 
   placesToday() {

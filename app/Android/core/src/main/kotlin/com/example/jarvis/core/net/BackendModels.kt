@@ -201,3 +201,60 @@ data class TradeStatsResponse(
     val retrievedAt: String? = null,
     val cached: Boolean = false,
 )
+
+// ---- Clips de video (OpusClip) y publicación en YouTube ----
+
+@Serializable
+data class ClipProjectRequest(
+    val videoUrl: String,
+    val prompt: String? = null,
+    val language: String? = null,
+    val aspect: String? = null,
+)
+
+@Serializable
+data class ClipProjectCreated(val projectId: String, val stage: String = "PENDING")
+
+@Serializable
+data class VideoClip(
+    val number: Int,
+    val clipId: String? = null,
+    val curationId: String? = null,
+    val projectId: String? = null,
+    val title: String? = null,
+    val durationSec: Int? = null,
+    val score: Double? = null,
+    val previewUrl: String? = null,
+    val exportUrl: String? = null,
+)
+
+@Serializable
+data class ClipProjectStatus(
+    val projectId: String,
+    val stage: String,
+    val done: Boolean = false,
+    val failed: Boolean = false,
+    val error: String? = null,
+    val clips: List<VideoClip> = emptyList(),
+)
+
+@Serializable
+data class ClipPublishRequest(
+    val projectId: String,
+    val curationId: String,
+    val title: String,
+    val description: String? = null,
+    val privacy: String? = null,
+    val publishAt: String? = null,
+)
+
+@Serializable
+data class ClipPublishResult(
+    val scheduled: Boolean = false,
+    val postId: String? = null,
+    val scheduleId: String? = null,
+    val publishAt: String? = null,
+    val privacy: String,
+    val account: String? = null,
+    val note: String? = null,
+)

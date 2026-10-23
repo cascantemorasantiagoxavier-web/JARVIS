@@ -1,0 +1,156 @@
+{
+  "id": "video_clips",
+  "name": "Clips de video y YouTube",
+  "description": "Recorta cualquier video público en clips cortos con OpusClip, te avisa del estado, los lista numerados y publica en YouTube el que elijas (privado por defecto) a través de tu cuenta conectada en OpusClip, con confirmación. También programa publicaciones.",
+  "category": "marketing",
+  "exampleUtterances": [
+    "haz clips de este video https://youtu.be/abc123",
+    "ya están mis clips",
+    "sube el clip 2 a youtube",
+    "programa el clip 1 en youtube para mañana a las 6 pm",
+    "recorta este video en clips verticales"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "create",
+          "status",
+          "publish",
+          "list"
+        ]
+      },
+      "video_url": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 2000
+      },
+      "prompt": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "language": {
+        "type": "string",
+        "pattern": "^(auto|[a-z]{2})$"
+      },
+      "aspect": {
+        "type": "string",
+        "enum": [
+          "portrait",
+          "landscape",
+          "square"
+        ]
+      },
+      "project_id": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 80
+      },
+      "clip": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 4500
+      },
+      "privacy": {
+        "type": "string",
+        "enum": [
+          "private",
+          "unlisted",
+          "public"
+        ]
+      },
+      "publish_at": {
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "project_id": {
+        "type": "string"
+      },
+      "stage": {
+        "type": "string"
+      },
+      "clips": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "post": {
+        "type": "object"
+      },
+      "projects": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "clips_create",
+    "clips_status",
+    "clips_publish"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Créditos de tu plan de OpusClip por cada video recortado (la API requiere plan Pro, Max o Business). Publicar en YouTube no gasta créditos según el conector usado.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 3
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin OPUSCLIP_API_KEY → requiere configuración. Video privado o enlace inválido → lo dice. Clips aún en proceso → indica la etapa y que vuelvas a preguntar. Sin YouTube conectado en OpusClip → explica cómo conectarlo. Publicar siempre pide confirmación.",
+  "maturity": "partial",
+  "missing": [
+    "contrato de la API de OpusClip tomado de un conector de terceros (la documentación oficial no fue accesible): confirmar con la primera prueba real",
+    "aviso automático cuando los clips están listos (hoy se pregunta a JARVIS)"
+  ],
+  "privacy": "El enlace del video va a OpusClip; los datos de YouTube los maneja OpusClip. JARVIS no ve credenciales de Google. Publica solo contenido propio o con permiso.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "action": "create",
+        "video_url": "https://youtu.be/abc123"
+      },
+      "expect": [
+        "needs_configuration"
+      ]
+    }
+  ]
+}

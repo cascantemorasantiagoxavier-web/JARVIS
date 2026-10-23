@@ -80,6 +80,36 @@ export const TradeStatsBody = z.object({
   reporterCode: z.number().int().min(1).max(999).optional(),
 });
 
+const httpsUrl = z
+  .string()
+  .url()
+  .max(2000)
+  .refine((u) => /^https?:\/\//i.test(u), 'El enlace debe empezar por http:// o https://.');
+
+export const ClipProjectBody = z.object({
+  videoUrl: httpsUrl,
+  prompt: z.string().trim().max(500).optional(),
+  language: z.string().regex(/^(auto|[a-z]{2})$/).optional(),
+  aspect: z.enum(['portrait', 'landscape', 'square']).optional(),
+  title: z.string().trim().max(200).optional(),
+});
+
+export const ClipProjectParams = z.object({ projectId: z.string().regex(/^[A-Za-z0-9_-]{3,80}$/) });
+
+export const ClipPublishBody = z.object({
+  projectId: z.string().regex(/^[A-Za-z0-9_-]{3,80}$/),
+  curationId: z.string().regex(/^[A-Za-z0-9_-]{2,80}$/),
+  postAccountId: z.string().max(120).optional(),
+  title: z.string().trim().min(1).max(100),
+  description: z.string().max(4500).optional(),
+  privacy: z.enum(['private', 'unlisted', 'public']).optional(),
+  publishAt: z
+    .string()
+    .datetime()
+    .refine((d) => Date.parse(d) > Date.now(), 'La fecha de publicación debe ser futura.')
+    .optional(),
+});
+
 // Base64 estándar sin espacios. Límites alineados con shared/tools.json
 // (imagen ≤ 8 000 000 caracteres ≈ 6 MB; audio ≤ 15 000 000 ≈ 11 MB).
 const base64 = (max) => z.string().min(100).max(max).regex(/^[A-Za-z0-9+/]+={0,2}$/, 'Base64 no válido.');

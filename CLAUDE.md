@@ -17,8 +17,9 @@ backend/            Node 22 + Express 5. Guarda la clave de OpenAI. Rutas /api/*
   src/services/search     SearXNG / Tavily / Brave / OpenAI / Wikipedia + extractor de páginas
   src/services/business   Overpass + Nominatim (OSM), estado por dato; Google Places solo al verificar
   src/services/trade      UN Comtrade (estadísticas oficiales de comercio exterior)
+  src/services/video      OpusClip: clips de video y publicación en YouTube vía OpusClip
   test/                   node:test con fetch simulado; test/live = pruebas reales (opt-in)
-shared/             tools.json (46 herramientas con nivel de riesgo, fuente única), skills/*.json (44
+shared/             tools.json (49 herramientas con nivel de riesgo, fuente única), skills/*.json (45
                     manifiestos de habilidades) y persona-es.md
 app/Android/        Proyecto Gradle (wrapper 8.14.3)
   core/             Kotlin/JVM PURO: cerebro, intenciones, herramientas, habilidades, Realtime,
@@ -34,8 +35,8 @@ render.yaml         Blueprint de Render para el servidor (las claves se ponen en
 ```
 
 Paquetes de `:core` (`com.example.jarvis.core.*`): `brain`, `orchestrator`, `intent`, `tools`
-(registro, ejecutor, riesgo, permisos, confirmaciones), `tools/local`, `toolset` (implementa las 46),
-`skills` (registro, motor, router, meta-herramientas) y `skills/impl` (las 44 habilidades),
+(registro, ejecutor, riesgo, permisos, confirmaciones), `tools/local`, `toolset` (implementa las 49),
+`skills` (registro, motor, router, meta-herramientas) y `skills/impl` (las 45 habilidades),
 `realtime` (controlador + protocolo), `business`, `memory`, `notes`, `tasks`, `weather`, `device`,
 `globe`, `net` (cliente del backend), `model`, `text`, `json`, `util`.
 
@@ -48,7 +49,7 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 72 pruebas, sin red
+cd backend && npm ci && npm test          # 78 pruebas, sin red
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)
 npm start                                  # lee backend/.env
 npm run test:live                          # pruebas reales: requieren red y claves
@@ -128,7 +129,7 @@ Detalle por área en `.claude/rules/*.md`.
 
 ## Estado y limitaciones conocidas (2026-10-23)
 
-- Backend y `:core`: pruebas AUTOMATIZADAS en verde (incluidas las 44 habilidades, con datos simulados).
+- Backend y `:core`: pruebas AUTOMATIZADAS en verde (incluidas las 45 habilidades, con datos simulados).
 - Visión y transcripción: probadas con OpenAI simulado; nunca contra la API real (red bloqueada).
 - Claves del usuario: UN Comtrade y Google Maps integradas (desactivadas sin clave); el resto de sus
   claves de Google Cloud no se usan. **No tiene clave de OpenAI todavía.** Ver

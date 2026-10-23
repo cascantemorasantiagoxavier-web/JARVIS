@@ -6,6 +6,9 @@ import {
   BusinessSearchBody,
   CallIdParams,
   ChatBody,
+  ClipProjectBody,
+  ClipProjectParams,
+  ClipPublishBody,
   RealtimeCallBody,
   RealtimeSessionBody,
   TradeStatsBody,
@@ -22,7 +25,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(nex
 export const MEDIA_ROUTES = /^\/api\/(vision|audio)\//;
 const mediaJson = express.json({ limit: '16mb' });
 
-export function healthRouter({ config, realtime, chat, webSearch, media, trade, business }) {
+export function healthRouter({ config, realtime, chat, webSearch, media, trade, business, clips }) {
   const r = Router();
   r.get('/health', (_req, res) => {
     res.json({
@@ -40,13 +43,14 @@ export function healthRouter({ config, realtime, chat, webSearch, media, trade, 
         transcription: media.enabled && Boolean(config.openai.media.transcribeModel),
         trade: trade.enabled,
         googlePlaces: business.googlePlacesEnabled,
+        clips: clips.enabled,
       },
     });
   });
   return r;
 }
 
-export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, trade, config }) {
+export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, trade, clips, config }) {
   const r = Router();
 
   r.post('/realtime/session', validate(RealtimeSessionBody), wrap(async (req, res) => {
@@ -69,6 +73,12 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
       transcription: { today: usage.mediaToday('transcribe'), maxPerDay: config.openai.media.maxTranscriptionsPerDay },
       trade: { today: usage.tradeToday(), maxPerDay: config.trade.maxPerDay },
       googlePlaces: { today: usage.placesToday(), maxPerDay: config.google.placesMaxPerDay },
+      clips: {
+        projectsToday: usage.clipsToday('projects'),
+        maxProjectsPerDay: config.clips.maxProjectsPerDay,
+        postsToday: usage.clipsToday('posts'),
+        maxPostsPerDay: config.clips.maxPostsPerDay,
+      },
       note: 'Contadores en memoria del servidor; se reinician al reiniciar el backend. El gasto real se consulta en el panel de OpenAI.',
     });
   });
@@ -83,6 +93,22 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
 
   r.post('/audio/transcribe', mediaJson, validate(TranscribeBody), wrap(async (req, res) => {
     res.json(await media.transcribe(req.valid.body));
+  }));
+
+  r.post('/clips/projects', validate(ClipProjectBody), wrap(async (req, res) => {
+    res.json(await clips.createProject(req.valid.body));
+  }));
+
+  r.get('/clips/projects/:projectId', validate(ClipProjectParams, 'params'), wrap(async (req, res) => {
+    res.json(await clips.project(req.valid.params.projectId));
+  }));
+
+  r.get('/clips/accounts', wrap(async (_req, res) => {
+    res.json({ accounts: await clips.accounts() });
+  }));
+
+  r.post('/clips/publish', validate(ClipPublishBody), wrap(async (req, res) => {
+    res.json(await clips.publish(req.valid.body));
   }));
 
   r.post('/trade/stats', validate(TradeStatsBody), wrap(async (req, res) => {

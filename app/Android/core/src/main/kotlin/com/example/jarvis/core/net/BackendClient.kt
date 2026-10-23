@@ -65,6 +65,15 @@ class BackendClient(
 
     suspend fun chat(req: ChatRequest): ChatResponse = post("/api/chat", req, ChatRequest.serializer(), ChatResponse.serializer())
 
+    suspend fun clipsCreate(req: ClipProjectRequest): ClipProjectCreated =
+        post("/api/clips/projects", req, ClipProjectRequest.serializer(), ClipProjectCreated.serializer())
+
+    suspend fun clipsStatus(projectId: String): ClipProjectStatus =
+        get("/api/clips/projects/${URLEncoder.encode(projectId, "UTF-8")}", ClipProjectStatus.serializer(), auth = true)
+
+    suspend fun clipsPublish(req: ClipPublishRequest): ClipPublishResult =
+        post("/api/clips/publish", req, ClipPublishRequest.serializer(), ClipPublishResult.serializer())
+
     suspend fun tradeStats(req: TradeStatsRequest): TradeStatsResponse =
         post("/api/trade/stats", req, TradeStatsRequest.serializer(), TradeStatsResponse.serializer())
 

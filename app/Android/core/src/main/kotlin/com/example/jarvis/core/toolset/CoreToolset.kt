@@ -32,6 +32,8 @@ import com.example.jarvis.core.net.NearSpec
 import com.example.jarvis.core.net.OpenFoodFactsClient
 import com.example.jarvis.core.net.ProductLookup
 import com.example.jarvis.core.net.ProductLookupResult
+import com.example.jarvis.core.net.ClipProjectRequest
+import com.example.jarvis.core.net.ClipPublishRequest
 import com.example.jarvis.core.net.TradeStatsRequest
 import com.example.jarvis.core.net.TranscribeRequest
 import com.example.jarvis.core.net.VisionRequest
@@ -87,6 +89,11 @@ class CoreToolset(private val d: ToolDeps) {
             "open_app" to ToolHandler { a, _ -> openApp(a.str("app")!!) },
             "get_weather" to ToolHandler { a, _ -> weather(a.str("place")) },
             "web_search" to ToolHandler { a, ctx -> webSearch(a.str("query")!!, a.int("max_results") ?: 8, a.strings("domains"), ctx) },
+            "clips_create" to ToolHandler { a, _ -> clipsCreate(a.str("video_url")!!, a.str("prompt"), a.str("language"), a.str("aspect")) },
+            "clips_status" to ToolHandler { a, _ -> clipsStatus(a.str("project_id")!!) },
+            "clips_publish" to ToolHandler { a, _ ->
+                clipsPublish(ClipPublishRequest(a.str("project_id")!!, a.str("curation_id")!!, a.str("title")!!, a.str("description"), a.str("privacy") ?: "private", a.str("publish_at")))
+            },
             "trade_statistics" to ToolHandler { a, _ -> tradeStats(a.str("hs_code")!!, a.str("flow")!!, a.ints("years"), a.bool("by_partner") ?: true) },
             "fetch_page" to ToolHandler { a, _ -> fetchPage(a.str("url")!!) },
             "business_search" to ToolHandler { a, ctx -> businessSearch(a.str("category")!!, a.str("location"), a.bool("near_me") == true, a.int("radius_m"), a.int("limit") ?: 20, a.int("offset") ?: 0, ctx) },
@@ -249,6 +256,32 @@ class CoreToolset(private val d: ToolDeps) {
             "warnings" to r.warnings, "source" to (r.source?.url ?: "https://comtradeplus.un.org"), "retrieved_at" to r.retrievedAt,
         )
         return ToolResult.ok(msg, data, listOf(ResultCard.Info("Comercio exterior · SA $hsCode", r.totals.map { "${it.year}: ${usd(it.valueUsd)}" } + r.topPartners.take(5).map { "  ${it.partner}: ${usd(it.valueUsd)}" } + r.warnings)))
+    }
+
+    private suspend fun clipsCreate(url: String, prompt: String?, language: String?, aspect: String?): ToolResult {
+        val r = d.backend.clipsCreate(ClipProjectRequest(url, prompt, language, aspect ?: "portrait"))
+        return ToolResult.ok("OpusClip recibió el video (proyecto ${r.projectId}).", jsonOf("project_id" to r.projectId, "stage" to r.stage))
+    }
+
+    private suspend fun clipsStatus(projectId: String): ToolResult {
+        val r = d.backend.clipsStatus(projectId)
+        val msg = when {
+            r.failed -> "El proyecto $projectId falló en OpusClip" + (r.error?.let { ": $it" } ?: ".")
+            !r.done -> "El proyecto $projectId sigue en proceso (etapa ${r.stage})."
+            else -> "El proyecto $projectId tiene ${r.clips.size} clips listos."
+        }
+        val clips = r.clips.map {
+            mapOf("number" to it.number, "curation_id" to it.curationId, "title" to it.title, "duration_sec" to it.durationSec, "score" to it.score, "preview_url" to it.previewUrl)
+        }
+        return ToolResult.ok(msg, jsonOf("project_id" to projectId, "stage" to r.stage, "done" to r.done, "failed" to r.failed, "error" to r.error, "clips" to clips))
+    }
+
+    private suspend fun clipsPublish(req: ClipPublishRequest): ToolResult {
+        val r = d.backend.clipsPublish(req)
+        val privacy = mapOf("private" to "privado", "unlisted" to "no listado", "public" to "público")[r.privacy] ?: r.privacy
+        val msg = if (r.scheduled) "Programado «${req.title}» en YouTube (${r.account ?: "tu canal"}, $privacy) para ${r.publishAt}."
+        else "OpusClip está subiendo «${req.title}» a YouTube (${r.account ?: "tu canal"}, $privacy)."
+        return ToolResult.ok(msg, jsonOf("post_id" to r.postId, "schedule_id" to r.scheduleId, "scheduled" to r.scheduled, "publish_at" to r.publishAt, "privacy" to r.privacy, "account" to r.account, "note" to r.note))
     }
 
     private fun usd(v: Long): String = "US$" + "%,d".format(java.util.Locale.US, v)

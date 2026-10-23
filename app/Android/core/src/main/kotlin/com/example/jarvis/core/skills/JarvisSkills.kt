@@ -19,7 +19,7 @@ object JarvisSkills {
         // Investigación
         DeepResearchSkill(), ImportExportResearchSkill(), PriceComparisonSkill(),
         // Comunicación y marketing
-        MessageDrafterSkill(), EmailAssistantSkill(), MessagingAssistantSkill(), SocialMediaManagerSkill(), MarketingOptimizerSkill(), WebsiteBuilderSkill(),
+        MessageDrafterSkill(), EmailAssistantSkill(), MessagingAssistantSkill(), SocialMediaManagerSkill(), MarketingOptimizerSkill(), WebsiteBuilderSkill(), VideoClipsSkill(),
         // Finanzas
         ExpenseCaptureSkill(), PersonalFinanceSkill(), CashflowForecastSkill(), InvoiceQuoteCreatorSkill(),
         // Clientes, negociación y mercado

@@ -15,6 +15,7 @@ import { ChatService } from './services/openai/chat.js';
 import { MediaService } from './services/openai/media.js';
 import { GooglePlacesClient } from './services/business/googlePlaces.js';
 import { ComtradeService } from './services/trade/comtrade.js';
+import { OpusClipService } from './services/video/opusclip.js';
 import { RealtimeService } from './services/openai/realtime.js';
 import { buildProviders, WebSearchService } from './services/search/webSearchService.js';
 import { UsageTracker } from './services/usage.js';
@@ -28,6 +29,7 @@ export function createServices(config, logger, overrides = {}) {
   const chat = new ChatService({ config, http, logger, usage });
   const media = new MediaService({ config, http, logger, usage });
   const trade = new ComtradeService({ config, http, usage });
+  const clips = new OpusClipService({ config, http, usage });
   const googlePlaces = config.google.mapsKey ? new GooglePlacesClient({ config, http, usage }) : null;
   const webSearch = new WebSearchService({ providers: overrides.providers ?? buildProviders(config, http), logger });
   const pageFetcher = overrides.pageFetcher ?? createSafePageTransport({ userAgent: userAgent(config) });
@@ -41,7 +43,7 @@ export function createServices(config, logger, overrides = {}) {
     logger,
     config,
   });
-  return { http, usage, realtime, chat, media, trade, webSearch, pageFetcher, business };
+  return { http, usage, realtime, chat, media, trade, clips, webSearch, pageFetcher, business };
 }
 
 export function createApp(config, logger, overrides = {}) {

@@ -39,6 +39,24 @@
       "parameters": {"type": "object", "properties": {"place": {"type": "string", "maxLength": 80}}, "additionalProperties": false}
     },
     {
+      "name": "clips_create",
+      "description": "Envía un video a OpusClip para recortarlo en clips cortos con IA (gasta créditos de tu plan de OpusClip). El enlace debe ser público (YouTube, Drive, Vimeo, MP4…).",
+      "site": "backend", "confirm": false, "permissions": [], "risk": "external", "exposed": false, "timeoutSeconds": 60,
+      "parameters": {"type": "object", "properties": {"video_url": {"type": "string", "maxLength": 2000, "pattern": "^https?://"}, "prompt": {"type": "string", "maxLength": 500}, "language": {"type": "string", "pattern": "^(auto|[a-z]{2})$"}, "aspect": {"type": "string", "enum": ["portrait", "landscape", "square"]}}, "required": ["video_url"], "additionalProperties": false}
+    },
+    {
+      "name": "clips_status",
+      "description": "Estado de un proyecto de clips de OpusClip y, si terminó, la lista numerada de clips.",
+      "site": "backend", "confirm": false, "permissions": [], "risk": "read", "exposed": false, "timeoutSeconds": 60,
+      "parameters": {"type": "object", "properties": {"project_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{3,80}$"}}, "required": ["project_id"], "additionalProperties": false}
+    },
+    {
+      "name": "clips_publish",
+      "description": "Publica en YouTube, a través de OpusClip, un clip con el título, la descripción y la privacidad indicados; publica solo videos tuyos o con permiso, porque YouTube sanciona las infracciones de derechos de autor. Se puede programar con publish_at.",
+      "site": "backend", "confirm": true, "permissions": [], "risk": "sensitive", "exposed": false, "timeoutSeconds": 60,
+      "parameters": {"type": "object", "properties": {"project_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{3,80}$"}, "curation_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{2,80}$"}, "title": {"type": "string", "minLength": 1, "maxLength": 100}, "description": {"type": "string", "maxLength": 4500}, "privacy": {"type": "string", "enum": ["private", "unlisted", "public"]}, "publish_at": {"type": "string", "maxLength": 40}}, "required": ["project_id", "curation_id", "title"], "additionalProperties": false}
+    },
+    {
       "name": "trade_statistics",
       "description": "Estadísticas oficiales de comercio exterior (UN Comtrade): valor en USD de importaciones o exportaciones de Costa Rica por partida del Sistema Armonizado y año, con los principales países socios. Requiere el código SA (2, 4 o 6 dígitos). No son precios ni cotizaciones.",
       "site": "backend", "confirm": false, "permissions": [], "risk": "read",

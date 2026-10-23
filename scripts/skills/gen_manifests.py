@@ -343,6 +343,21 @@ skill("social_media_manager",
   privacy="Nada se publica sin que tú lo hagas.",
   testCases=[{"name": "post", "input": {"action": "draft_post", "text": "Llegó nuestro café de temporada, tostado esta semana en Heredia. Pídelo hoy por WhatsApp.", "platforms": ["instagram", "x"]}, "expect": ["completed"]}])
 
+skill("video_clips",
+  name="Clips de video y YouTube", category="marketing",
+  description="Recorta cualquier video público en clips cortos con OpusClip, te avisa del estado, los lista numerados y publica en YouTube el que elijas (privado por defecto) a través de tu cuenta conectada en OpusClip, con confirmación. También programa publicaciones.",
+  exampleUtterances=["haz clips de este video https://youtu.be/abc123", "ya están mis clips", "sube el clip 2 a youtube", "programa el clip 1 en youtube para mañana a las 6 pm", "recorta este video en clips verticales"],
+  inputSchema=O({"action": S(enum=["create", "status", "publish", "list"]), "video_url": S(2000, 8), "prompt": S(500), "language": S(pattern="^(auto|[a-z]{2})$"), "aspect": S(enum=["portrait", "landscape", "square"]),
+                 "project_id": S(80, 3), "clip": I(1, 50), "title": S(100, 1), "description": S(4500), "privacy": S(enum=["private", "unlisted", "public"]), "publish_at": S(40)}, ["action"]),
+  outputSchema=OUT({"action": S(), "project_id": S(), "stage": S(), "clips": A(ANY_OBJ), "post": ANY_OBJ, "projects": A(ANY_OBJ)}, ["action"]),
+  tools=["clips_create", "clips_status", "clips_publish"], requiresInternet=True, requiresExternalService=["jarvis_server"],
+  cost="Créditos de tu plan de OpusClip por cada video recortado (la API requiere plan Pro, Max o Business). Publicar en YouTube no gasta créditos según el conector usado.",
+  risk="sensitive", limits={"timeoutSeconds": 90, "maxToolCalls": 3}, cancellation=CANCEL,
+  errorHandling="Sin OPUSCLIP_API_KEY → requiere configuración. Video privado o enlace inválido → lo dice. Clips aún en proceso → indica la etapa y que vuelvas a preguntar. Sin YouTube conectado en OpusClip → explica cómo conectarlo. Publicar siempre pide confirmación.",
+  maturity="partial", missing=["contrato de la API de OpusClip tomado de un conector de terceros (la documentación oficial no fue accesible): confirmar con la primera prueba real", "aviso automático cuando los clips están listos (hoy se pregunta a JARVIS)"],
+  privacy="El enlace del video va a OpusClip; los datos de YouTube los maneja OpusClip. JARVIS no ve credenciales de Google. Publica solo contenido propio o con permiso.", localRoute=True,
+  testCases=[{"name": "sin_servidor", "input": {"action": "create", "video_url": "https://youtu.be/abc123"}, "expect": ["needs_configuration"]}])
+
 skill("marketing_optimizer",
   name="Optimizador de marketing", category="marketing",
   description="Puntúa textos publicitarios (llamada a la acción, beneficios, cifras, urgencia, legibilidad), propone variantes A/B, lista de verificación de campañas y enlaces con parámetros UTM.",
