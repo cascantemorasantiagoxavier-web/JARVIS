@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo negro desde el arranque para evitar destellos blancos antes de Compose -->
+    <style name="Theme.Jarvis" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/jarvis_black</item>
+        <item name="android:colorBackground">@color/jarvis_black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/jarvis_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/jarvis_amber</item>
+    </style>
+    <color name="jarvis_black">#FF020408</color>
+    <color name="jarvis_amber">#FFFF8C00</color>
+    <color name="ic_launcher_background">#FF020408</color>
+</resources>

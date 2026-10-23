@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo en DEBUG: permite http:// para probar el backend en la red local (p. ej. http://192.168.1.50:8787).
+     El token de la app viaja sin cifrar en ese caso: úsalo solo en tu Wi-Fi de confianza. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

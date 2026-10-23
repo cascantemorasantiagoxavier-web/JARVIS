@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">J.A.R.V.I.S.</string>
+    <string name="tagline">Siempre a tu lado, jefe.</string>
+    <string name="notif_channel_voice">Voz de JARVIS</string>
+    <string name="notif_channel_reminders">Recordatorios</string>
+    <string name="notif_voice_listening">Esperando \"Jarvis\"…</string>
+    <string name="notif_voice_session">Conversación de voz activa</string>
+    <string name="notif_action_stop">Detener</string>
+</resources>

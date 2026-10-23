@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Emblema propio: núcleo energético con anillos (diseño original, no marcas de terceros). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFF8C00"
+        android:strokeWidth="2.5"
+        android:pathData="M54,28 A26,26 0 1,1 53.99,28 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFB300"
+        android:strokeWidth="1.5"
+        android:pathData="M54,36 A18,18 0 1,1 53.99,36 Z" />
+    <path
+        android:fillColor="#FFFFB300"
+        android:pathData="M54,44 A10,10 0 1,1 53.99,44 Z" />
+    <path
+        android:fillColor="#FFFF8C00"
+        android:pathData="M53,22 L55,22 L55,30 L53,30 Z M53,78 L55,78 L55,86 L53,86 Z M22,53 L30,53 L30,55 L22,55 Z M78,53 L86,53 L86,55 L78,55 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#99FF8C00"
+        android:strokeWidth="1.2"
+        android:pathData="M24,62 Q54,44 84,62" />
+</vector>

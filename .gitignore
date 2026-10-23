@@ -1,0 +1,34 @@
+# --- Secretos (NUNCA al repositorio) ---
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+keystore.properties
+local.properties
+secrets/
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+
+# --- Gradle / Android / Kotlin ---
+.gradle/
+.kotlin/
+build/
+captures/
+*.apk
+*.aab
+*.iml
+.idea/
+.cxx/
+.externalNativeBuild/
+
+# Palabra clave local: el AAR y el modelo se descargan con scripts/fetch-sherpa-kws.sh
+app/Android/app/libs/*.aar
+app/Android/app/src/main/assets/kws/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+*.log
