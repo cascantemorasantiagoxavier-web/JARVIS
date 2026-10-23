@@ -117,6 +117,10 @@ class MemoryNotesTasksTest {
     @Test fun notePrivacyRules() {
         assertTrue(MarkdownChunker.chunk("Diario/hoy.md", "---\nprivado: true\n---\ntexto", 1, privacy).all { it.isPrivate })
         assertTrue(MarkdownChunker.chunk("x.md", "texto #privado", 1, privacy).all { it.isPrivate })
+        // Mencionar la etiqueta como código (documentación) no vuelve privada la nota, igual que en Obsidian
+        val doc = MarkdownChunker.chunk("guia.md", "Usa la etiqueta `#privado` para ocultar notas; `[[ejemplo]]` no enlaza. Ver [[ADR-010\\|ADR]].", 1, privacy)
+        assertTrue(doc.none { it.isPrivate })
+        assertEquals(setOf("ADR-010"), doc.flatMap { it.links }.toSet())
         assertTrue(MarkdownChunker.chunk("Privado/salud.md", "texto", 1, privacy).all { it.isPrivate })
         assertTrue(MarkdownChunker.chunk("x.md", "---\njarvis: no\n---\ntexto", 1, privacy).all { it.isPrivate })
         assertFalse(MarkdownChunker.chunk("Proyectos/x.md", "texto normal", 1, privacy).any { it.isPrivate })

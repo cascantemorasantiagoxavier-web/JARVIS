@@ -27,6 +27,7 @@ data class NoteSnippet(val notePath: String, val noteTitle: String, val heading:
 object MarkdownChunker {
     private val heading = Regex("^(#{1,6})\\s+(.+?)\\s*#*$")
     private val inlineTag = Regex("(?<![\\w/&#])#([\\p{L}0-9_/-]{2,})")
+    private val inlineCode = Regex("`[^`]*`")
     private val wikiLink = Regex("\\[\\[([^\\]|#]+)(?:#[^\\]|]*)?(?:\\|[^\\]]*)?]]")
 
     data class Frontmatter(val values: Map<String, String>, val tags: Set<String>)
@@ -87,8 +88,11 @@ object MarkdownChunker {
                 continue
             }
             if (!inCode) {
-                inlineTag.findAll(line).forEach { bodyTags += it.groupValues[1] }
-                wikiLink.findAll(line).forEach { links += it.groupValues[1].trim() }
+                // Como Obsidian: lo que va entre `comillas de código` no es etiqueta ni enlace.
+                val prose = line.replace(inlineCode, "")
+                inlineTag.findAll(prose).forEach { bodyTags += it.groupValues[1] }
+                // En tablas, Obsidian escribe [[nota\|alias]]: la barra invertida no es parte del nombre.
+                wikiLink.findAll(prose).forEach { links += it.groupValues[1].trim().trimEnd('\\') }
             }
             current.appendLine(line)
         }
