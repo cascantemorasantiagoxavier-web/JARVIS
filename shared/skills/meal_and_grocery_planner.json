@@ -1,0 +1,128 @@
+{
+  "id": "meal_and_grocery_planner",
+  "name": "Comidas y compras",
+  "description": "Plan semanal de comidas con recetas costarricenses sencillas (respeta vegetariano, vegano, sin gluten, económico), lista de compras con cantidades según personas y lista del súper para marcar.",
+  "category": "hogar",
+  "exampleUtterances": [
+    "planifica las comidas de la semana para 4 personas",
+    "haz la lista de compras del menú",
+    "agrega leche a la lista del súper",
+    "qué me falta comprar"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "plan_week",
+          "grocery_list",
+          "add_item",
+          "check_item",
+          "list_groceries",
+          "clear_checked"
+        ]
+      },
+      "people": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "preferences": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "vegetariano",
+            "vegano",
+            "sin_gluten",
+            "economico"
+          ]
+        },
+        "maxItems": 4
+      },
+      "meals_per_day": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "desayuno",
+            "almuerzo",
+            "cena"
+          ]
+        },
+        "maxItems": 3
+      },
+      "meals": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "maxItems": 21
+      },
+      "item": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "quantity": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "item_id": {
+        "type": "string",
+        "maxLength": 20
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin recetas para las preferencias → pide tus platos. Platos propios sin receta → se avisan para añadir ingredientes a mano.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "plan",
+      "input": {
+        "action": "plan_week",
+        "people": 2,
+        "preferences": [
+          "vegetariano"
+        ]
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -26,6 +26,8 @@ dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
     api(libs.okhttp)
+    // Lectura de códigos de barras y QR en el teléfono (Apache-2.0, Java puro).
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)

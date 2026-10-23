@@ -1,0 +1,133 @@
+{
+  "id": "language_coach",
+  "name": "Entrenador de idiomas",
+  "description": "Vocabulario con repetición espaciada por idioma, libro de frases útiles (inglés, portugués, francés), corrección de oraciones en inglés con reglas para hispanohablantes y corrección completa con IA.",
+  "category": "aprendizaje",
+  "exampleUtterances": [
+    "corrige esta oración en inglés: i have 30 years",
+    "agrega estas palabras de inglés a mi vocabulario",
+    "frases útiles en portugués para viajar",
+    "practiquemos vocabulario de francés"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "add_words",
+          "study",
+          "answer",
+          "progress",
+          "phrasebook",
+          "check_sentence"
+        ]
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "en",
+          "pt",
+          "fr",
+          "it",
+          "de"
+        ]
+      },
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "word": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "translation": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "example": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "required": [
+            "word",
+            "translation"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 200
+      },
+      "sentence": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "card_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "grade": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "answer": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; corrección con IA usa tokens.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 45,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Idioma sin reglas locales → corrección solo con IA (parcial si no hay servidor).",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Vocabulario en el teléfono.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "oracion",
+      "input": {
+        "action": "check_sentence",
+        "language": "en",
+        "sentence": "i have 30 years and people is nice"
+      },
+      "expect": [
+        "completed",
+        "partial"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "visual_scene_assistant",
+  "name": "Asistente visual",
+  "description": "Describe lo que muestra una foto (de la cámara o de un archivo) o lee el texto que contiene, con el modelo de visión del servidor. La imagen no se guarda.",
+  "category": "medios",
+  "exampleUtterances": [
+    "qué ves en esta foto",
+    "lee el texto de este letrero",
+    "describe la imagen que te voy a mostrar",
+    "qué dice este documento en la foto"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "enum": [
+          "camera",
+          "file"
+        ]
+      },
+      "task": {
+        "type": "string",
+        "enum": [
+          "describe",
+          "read_text"
+        ]
+      },
+      "question": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "task": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "task",
+      "text"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "analyze_image"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "required",
+  "cost": "Tokens de imagen del modelo de visión (centavos por imagen).",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 120,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin servidor → requiere configuración. Foto cancelada → no hace nada. Descripción con avisos de posibles errores.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "La imagen se envía al servidor y a OpenAI solo cuando la tomas o eliges para esta función; no se almacena.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "source": "camera",
+        "task": "describe"
+      },
+      "expect": [
+        "needs_configuration"
+      ]
+    }
+  ]
+}

@@ -11,6 +11,9 @@ import com.example.jarvis.core.intent.IntentDetector
 import com.example.jarvis.core.memory.MemoryService
 import com.example.jarvis.core.net.BackendClient
 import com.example.jarvis.core.net.BackendConfig
+import com.example.jarvis.core.net.ProductLookup
+import com.example.jarvis.core.net.ProductLookupResult
+import com.example.jarvis.core.device.PixelDecoder
 import com.example.jarvis.core.notes.NoteSearchService
 import com.example.jarvis.core.skills.InMemoryRecordStore
 import com.example.jarvis.core.skills.JarvisSkills
@@ -64,10 +67,15 @@ class TestKit(
     val registry = ToolRegistry(ToolCatalog.loadFromResources())
     var privacy = PrivacySettings()
 
+    /** Consulta de productos simulada (Open Food Facts real no se usa en pruebas). */
+    var productLookup: ProductLookup = ProductLookup { ProductLookupResult.Error("sin red en pruebas") }
+    /** Decodificador de imágenes simulado (en Android: BitmapFactory). */
+    var pixelDecoder: PixelDecoder = PixelDecoder { null }
+
     val deps = ToolDeps(
         backend = backend, memory = memory, notes = { if (notesEnabled) notes else null }, tasks = tasks, prospects = prospects,
         device = device, weather = weatherClient, weatherPlace = { Place("Acosta", "San José", "Costa Rica", 9.80, -84.17) },
-        currentLocation = { location }, defaultLocation = { null }, time = time,
+        currentLocation = { location }, defaultLocation = { null }, time = time, products = ProductLookup { productLookup.lookup(it) },
     )
 
     init {
@@ -92,6 +100,7 @@ class TestKit(
         store = store, tasks = tasks, memory = memory, notes = { if (notesEnabled) notes else null }, noteStats = { noteIndex.stats() },
         prospects = prospects, device = device, media = media, weather = weatherClient,
         weatherPlace = { Place("Acosta", "San José", "Costa Rica", 9.80, -84.17) }, llm = { skillLlm }, time = time,
+        pixels = PixelDecoder { pixelDecoder.decode(it) },
     )
     val skills = SkillRegistry(registry)
     val engine = SkillEngine(skills, executor, skillServices, env, PermissionGate { permissionGranted }, ConfirmationGate { _, _ -> confirm }, { logs += it })

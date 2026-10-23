@@ -367,6 +367,223 @@ skill("website_builder",
   privacy="Se genera en el teléfono.",
   testCases=[{"name": "sitio", "input": {"business_name": "Panadería La Espiga", "description": "Pan artesanal en Heredia", "services": ["Pan dulce", "Queques"], "whatsapp": "50688887777"}, "expect": ["partial"]}])
 
+# ---------------------------------------------------------------- finanzas
+CUR = S(enum=["CRC", "USD", "EUR"])
+skill("expense_capture",
+  name="Registro de gastos e ingresos", category="finanzas",
+  description="Registra gastos e ingresos dichos en lenguaje natural («gasté ₡5 000 en gasolina ayer»), con categoría automática y aviso de presupuesto; también desde la foto de un recibo (con el servidor) tras tu confirmación.",
+  exampleUtterances=["gasté 5000 colones en gasolina", "anota que pagué 20 dólares de almuerzo ayer", "registra un ingreso de 150 mil colones por una venta", "lee este recibo y regístralo como gasto"],
+  inputSchema=O({"action": S(enum=["add_from_text", "add", "from_receipt", "list", "delete"]), "text": S(500), "amount": N(0, 1e12), "currency": CUR, "category": S(60), "description": S(200), "date": S(40), "type": S(enum=["expense", "income"]), "period": S(enum=["week", "month", "last_month", "year", "all"]), "transaction_id": S(20)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  tools=["analyze_image"], requiresInternet=False, optionalServices=["jarvis_server"], model="none",
+  cost="Sin costo; leer recibos usa el modelo de visión del servidor.", risk="sensitive", limits={"timeoutSeconds": 90, "maxToolCalls": 1}, cancellation=CANCEL,
+  errorHandling="Sin monto o sin moneda → pide el dato (nunca asume la moneda). Recibo ilegible → pide registrarlo por voz. Borrar pide confirmación.",
+  maturity="implemented", privacy="Datos financieros solo en el teléfono. La foto del recibo solo va al servidor si usas esa opción.", localRoute=True,
+  testCases=[{"name": "texto", "input": {"action": "add_from_text", "text": "gasté 5000 colones en gasolina ayer"}, "expect": ["completed"]}])
+
+skill("personal_finance",
+  name="Finanzas personales", category="finanzas",
+  description="Resumen de ingresos, gastos y balance por moneda y categoría, presupuestos mensuales con alertas al 80 %, mayores gastos y comparación con el mes anterior, a partir de tus movimientos registrados.",
+  exampleUtterances=["cuánto he gastado este mes", "pon un presupuesto de comida de 150 mil colones", "cómo van mis finanzas", "compara mis gastos con el mes pasado"],
+  inputSchema=O({"action": S(enum=["summary", "set_budget", "budgets", "top_expenses", "compare_months"]), "period": S(enum=["week", "month", "last_month", "year", "all"]), "category": S(60), "limit": N(0, 1e12), "currency": CUR}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, cost="Sin costo.", risk="local_write", limits={"timeoutSeconds": 20, "maxToolCalls": 0}, cancellation=CANCEL,
+  errorHandling="Sin movimientos → lo dice. Monedas distintas se resumen por separado (sin convertir).",
+  maturity="implemented", privacy="Todo en el teléfono.", localRoute=True,
+  testCases=[{"name": "resumen", "input": {"action": "summary", "period": "month"}, "expect": ["completed"]}])
+
+skill("cashflow_forecast",
+  name="Proyección de flujo de caja", category="finanzas",
+  description="Proyecta tu saldo de 1 a 12 meses con ingresos y gastos fijos, el promedio de gasto variable y las cotizaciones aceptadas, y avisa en qué mes el saldo sería negativo. Las suposiciones se informan.",
+  exampleUtterances=["proyecta mi flujo de caja de los próximos 3 meses", "agrega el alquiler de 300 mil como gasto fijo el día 1", "me va a alcanzar el dinero hasta diciembre", "lista mis gastos fijos"],
+  inputSchema=O({"action": S(enum=["forecast", "add_recurring", "list_recurring", "delete_recurring"]), "months": I(1, 12), "starting_balance": N(-1e12, 1e12), "currency": CUR, "name": S(80), "amount": N(0, 1e12), "type": S(enum=["expense", "income"]), "day_of_month": I(1, 31), "recurring_id": S(20)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, cost="Sin costo.", risk="sensitive", limits={"timeoutSeconds": 20, "maxToolCalls": 0}, cancellation=CANCEL,
+  errorHandling="Sin saldo inicial → lo estima con tus movimientos y lo advierte. Borrar pide confirmación.",
+  maturity="implemented", privacy="Todo en el teléfono.",
+  testCases=[{"name": "proyeccion", "input": {"action": "forecast", "months": 3, "starting_balance": 500000, "currency": "CRC"}, "expect": ["completed"]}])
+
+skill("invoice_quote_creator",
+  name="Cotizaciones y proformas", category="finanzas",
+  description="Crea cotizaciones y facturas proforma numeradas con líneas, IVA (13 % por defecto) y totales exactos, genera el documento HTML, cambia su estado, registra el pago como ingreso y abre el correo para enviarla (con confirmación).",
+  exampleUtterances=["haz una cotización para Café La Montaña de 10 sacos a 45 mil cada uno", "crea una proforma para el cliente Ana Mora", "marca como pagada la cotización 2", "envía la cotización 1 por correo"],
+  inputSchema=O({"action": S(enum=["create", "list", "update_status", "record_payment", "send"]), "kind": S(enum=["quote", "proforma"]), "client": S(160), "client_email": S(320), "issuer": S(160),
+                 "lines": A(O({"description": S(300, 1), "quantity": N(0), "unit_price": N(0)}, ["description", "quantity", "unit_price"]), 100), "tax_rate": N(0, 100), "currency": CUR, "valid_days": I(1, 365), "notes": S(1000), "quote_id": S(20), "status": S(enum=["draft", "sent", "accepted", "rejected", "paid"]), "save": B()}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  tools=["save_document", "compose_email"], requiresInternet=False, cost="Sin costo.", risk="external", limits={"timeoutSeconds": 30, "maxToolCalls": 2}, cancellation=CANCEL,
+  errorHandling="Líneas incompletas → se indican. Pago ya registrado → no se duplica. Enviar requiere confirmación.",
+  maturity="partial", missing=["factura electrónica oficial de Hacienda (requiere firma digital y la API de comprobantes electrónicos)", "adjuntar el PDF al correo (se adjunta el HTML a mano)"],
+  privacy="Documentos y datos de clientes solo en el teléfono.",
+  testCases=[{"name": "cotizacion", "input": {"action": "create", "client": "Café La Montaña", "lines": [{"description": "Saco de café 46 kg", "quantity": 10, "unit_price": 45000}], "save": False}, "expect": ["completed"]}])
+
+# ---------------------------------------------------------------- negocio
+skill("customer_relationships",
+  name="Relación con clientes (CRM)", category="negocio",
+  description="CRM sobre tus prospectos y contactos: registra llamadas, reuniones y mensajes, programa seguimientos con recordatorio, muestra el historial, cambia el estado y lista quién lleva días sin contacto.",
+  exampleUtterances=["registra que llamé a Ferretería El Clavo y quedé de enviar precios", "historial con Súper Uno", "a quién no he contactado en dos semanas", "marca a Café Tres como cliente"],
+  inputSchema=O({"action": S(enum=["log_interaction", "history", "follow_ups", "set_status", "contacts"]), "prospect_id": I(1), "contact_name": S(160), "kind": S(enum=["llamada", "reunión", "correo", "mensaje", "visita", "nota"]), "summary": S(2000), "follow_up": S(300), "follow_up_when": S(80), "status": S(enum=["NUEVO", "CONTACTADO", "INTERESADO", "NEGOCIANDO", "CLIENTE", "DESCARTADO"]), "days": I(1, 365), "query": S(120)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  tools=["create_task", "update_prospect"], requiresInternet=False, cost="Sin costo.", risk="local_write", limits={"timeoutSeconds": 20, "maxToolCalls": 2}, cancellation=CANCEL,
+  errorHandling="Contacto no guardado como prospecto → se registra como contacto libre y se avisa. Nombre ambiguo → pide el id.",
+  maturity="implemented", privacy="Todo en el teléfono.",
+  testCases=[{"name": "contactos", "input": {"action": "contacts"}, "expect": ["completed"]}])
+
+skill("negotiation_coach",
+  name="Entrenador de negociación", category="negocio",
+  description="Prepara negociaciones con objetivo, límite (BATNA), apertura, concesiones decrecientes y zona de acuerdo; evalúa ofertas (aceptar, contraofertar o rechazar) y entrena respuestas a tácticas frecuentes.",
+  exampleUtterances=["ayúdame a preparar una negociación: quiero vender a 50 mil y mi mínimo es 42 mil", "me ofrecieron 44 mil, qué hago", "cómo respondo si me dicen que es su última oferta", "plan de negociación como comprador"],
+  inputSchema=O({"action": S(enum=["plan", "evaluate_offer", "practice"]), "role": S(enum=["seller", "buyer"]), "target": N(0), "walk_away": N(0), "opening": N(0), "offer": N(0), "their_limit": N(0), "currency": CUR, "issues": A(S(80), 10), "context": S(1000)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, optionalServices=["jarvis_server"], model="optional", cost="Sin costo; la práctica con IA usa tokens.", risk="read",
+  limits={"timeoutSeconds": 45, "maxToolCalls": 0}, cancellation=CANCEL_RO,
+  errorHandling="Límite incoherente con el objetivo → se explica. Sin zona de acuerdo → recomienda preparar la alternativa.",
+  maturity="implemented", privacy="Las cifras solo salen del teléfono si pides práctica con IA.",
+  testCases=[{"name": "plan", "input": {"action": "plan", "role": "seller", "target": 50000, "walk_away": 42000, "currency": "CRC"}, "expect": ["completed"]}])
+
+skill("contract_review",
+  name="Revisión de contratos", category="negocio",
+  description="Revisión orientativa de contratos en español: identifica cláusulas (plazo, renovación, terminación, penalidades, pagos, exclusividad, jurisdicción…), señala riesgos y cláusulas ausentes, extrae montos y fechas y, si lo pides, lo explica con IA. No es asesoría legal.",
+  exampleUtterances=["revisa este contrato de alquiler", "qué riesgos tiene este contrato", "busca cláusulas de renovación automática y penalidades", "analiza el contrato de servicios que te voy a dar"],
+  inputSchema=O({"source": S(enum=["text", "file"]), "text": S(400000), "party": S(120), "question": S(500), "use_ai": B()}, ["source"]),
+  outputSchema=OUT({"clauses": A(ANY_OBJ), "risks": A(ANY_OBJ), "missing": A(S()), "used_model": B()}, ["clauses", "risks", "missing", "used_model"]),
+  requiresInternet=False, optionalServices=["jarvis_server"], model="optional", cost="Sin costo; el análisis con IA usa tokens (modo profundo).", risk="read",
+  limits={"timeoutSeconds": 120, "maxToolCalls": 0}, cancellation=CANCEL_RO,
+  errorHandling="PDF no soportado → pide DOCX o texto. Siempre recuerda que no sustituye a un abogado.",
+  maturity="implemented", privacy="El contrato se analiza en el teléfono; solo va al servidor si activas use_ai.",
+  testCases=[{"name": "texto", "input": {"source": "text", "text": "El presente contrato tendrá una duración de un año y se renovará automáticamente por periodos iguales. En caso de terminación anticipada, el arrendatario pagará una multa de dos meses de renta. Las partes se someten a los tribunales de Miami, Florida."}, "expect": ["completed"]}])
+
+skill("competitor_intelligence",
+  name="Inteligencia competitiva", category="negocio",
+  description="Analiza la competencia de tu categoría en una zona con OpenStreetMap: cuántos hay, dónde se concentran, qué porcentaje publica teléfono o sitio web y, leyendo algunos sitios, qué ofrecen y precios publicados.",
+  exampleUtterances=["analiza mi competencia: panaderías en San Pedro", "cuántas ferreterías hay en Heredia y cuántas tienen página web", "estudio de competidores de cafeterías en Escazú", "qué tan saturado está el mercado de veterinarias en Cartago"],
+  inputSchema=O({"category": S(80, 2), "location": S(120), "own_business_name": S(120), "read_websites": I(0, 5)}, ["category"]),
+  outputSchema=OUT({"competitors": N(0), "insights": A(S())}, ["competitors", "insights"]),
+  tools=["business_search", "fetch_page"], requiresInternet=True, requiresExternalService=["jarvis_server"], cost="1 búsqueda de negocios y hasta 5 lecturas.", risk="read",
+  limits={"timeoutSeconds": 150, "maxToolCalls": 7}, cancellation=CANCEL_RO,
+  errorHandling="Sin servidor → requiere configuración. Sitios ilegibles → se omiten con aviso. Cobertura de OSM incompleta → se advierte.",
+  maturity="implemented", privacy="Solo categoría y zona viajan al servidor.",
+  testCases=[{"name": "sin_servidor", "input": {"category": "panaderías", "location": "San Pedro"}, "expect": ["needs_configuration"]}])
+
+skill("supplier_verifier",
+  name="Verificador de proveedores", category="negocio",
+  description="Revisa señales de confianza de un proveedor: correo gratuito o del dominio, código de país del teléfono, formato de cédula jurídica, datos publicados en su sitio y menciones de fraude en la web, con puntuación orientativa y recomendaciones.",
+  exampleUtterances=["verifica este proveedor de China antes de pagarle", "es confiable el proveedor Shenzhen LED Co", "revisa si este correo y teléfono de proveedor son coherentes", "verifica la empresa Distribuidora XYZ"],
+  inputSchema=O({"name": S(160, 2), "website": S(500), "email": S(320), "phone": S(40), "country": S(60), "tax_id": S(30)}, ["name"]),
+  outputSchema=OUT({"name": S(), "score": N(0, 100), "verdict": S(), "signals": A(ANY_OBJ)}, ["name", "score", "verdict", "signals"]),
+  tools=["fetch_page", "web_search"], requiresInternet=False, optionalServices=["jarvis_server"], cost="Sin servidor: sin costo. Con servidor: 1 búsqueda y 1 lectura.", risk="read",
+  limits={"timeoutSeconds": 90, "maxToolCalls": 2}, cancellation=CANCEL_RO,
+  errorHandling="Sin servidor → solo comprobaciones de formato y coherencia (parcial). Resultados negativos se presentan como señales para revisar, no como prueba.",
+  maturity="implemented", privacy="Nombre, sitio y datos del proveedor van al buscador solo si hay servidor.",
+  testCases=[{"name": "formatos", "input": {"name": "Shenzhen LED Co", "email": "ventas.led@gmail.com", "phone": "+86 755 1234 5678", "country": "China", "website": "https://shenzhen-led.example"}, "expect": ["partial", "completed"]}])
+
+# ---------------------------------------------------------------- planificación
+skill("schedule_optimizer",
+  name="Optimizador de agenda", category="asistente",
+  description="Organiza tu jornada: toma los eventos del calendario y las tareas fijas, calcula los huecos libres y ubica las tareas pendientes por urgencia y prioridad (estima duraciones «30 min», «2 h»), con márgenes entre bloques.",
+  exampleUtterances=["organiza mi día", "acomoda mis tareas de mañana en la agenda", "planifica mi día de 8 a 5", "optimiza mi agenda de hoy"],
+  inputSchema=O({"date": S(10), "work_start": S(5), "work_end": S(5), "default_task_minutes": I(10, 480), "buffer_minutes": I(0, 60), "include_overdue": B(), "include_undated": B()}),
+  outputSchema=OUT({"date": S(), "blocks": A(OUT({"start": S(), "end": S(), "type": S(), "title": S()}, ["start", "end", "type", "title"])), "unscheduled": A(S()), "utilization_percent": N(0, 100)}, ["date", "blocks", "unscheduled", "utilization_percent"]),
+  optionalPermissions=["calendar.read"], requiresInternet=False, cost="Sin costo.", risk="read", limits={"timeoutSeconds": 20, "maxToolCalls": 0}, cancellation=CANCEL_RO,
+  errorHandling="Sin permiso de calendario → plan parcial con aviso. Tareas que no caben → se listan.",
+  maturity="implemented", privacy="Todo en el teléfono.", localRoute=True,
+  testCases=[{"name": "manana", "input": {"date": "tomorrow"}, "expect": ["completed", "partial"]}])
+
+skill("renewal_monitor",
+  name="Monitor de renovaciones", category="asistente",
+  description="Registra vencimientos (marchamo, licencia, pasaporte, seguros, suscripciones, dominios…) y programa un aviso días antes como tarea con recordatorio; lista lo que vence pronto.",
+  exampleUtterances=["avísame 15 días antes de que venza mi licencia el 10 de marzo", "qué vence pronto", "registra el vencimiento del pasaporte el 2026-05-20", "recuérdame renovar el marchamo"],
+  inputSchema=O({"action": S(enum=["add", "list", "upcoming", "delete"]), "name": S(120), "kind": S(enum=["documento", "vehículo", "suscripción", "seguro", "servicio", "licencia", "otro"]), "expires_on": S(40), "remind_days_before": I(1, 120), "notes": S(300), "renewal_id": S(20), "days": I(1, 730)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  tools=["create_task", "delete_task"], requiresInternet=False, cost="Sin costo.", risk="sensitive", limits={"timeoutSeconds": 20, "maxToolCalls": 1}, cancellation=CANCEL,
+  errorHandling="Fecha no entendida → pide AAAA-MM-DD. Aviso en el pasado → se programa para mañana con aviso. Borrar pide confirmación.",
+  maturity="implemented", privacy="Todo en el teléfono.", localRoute=True,
+  testCases=[{"name": "marchamo", "input": {"action": "add", "name": "Marchamo", "kind": "vehículo"}, "expect": ["completed"]}])
+
+skill("travel_planner",
+  name="Planificador de viajes", category="asistente",
+  description="Planifica un viaje: ubica el destino, trae el pronóstico diario (hasta 16 días), arma un itinerario base, lista de equipaje según clima y propósito, reparto de presupuesto y, si es al extranjero, busca requisitos de entrada (con el servidor).",
+  exampleUtterances=["planifica mi viaje a Monteverde del 10 al 12 de octubre", "voy a Panamá por negocios la próxima semana, qué llevo", "arma un itinerario para Guanacaste con playa y comida", "qué clima hará en mi viaje a Puerto Viejo"],
+  inputSchema=O({"destination": S(120, 2), "start_date": S(10), "end_date": S(10), "purpose": S(enum=["ocio", "negocios"]), "interests": A(S(60), 8), "budget": N(0), "currency": CUR, "create_tasks": B()}, ["destination", "start_date", "end_date"]),
+  outputSchema=OUT({"destination": S(), "itinerary": A(ANY_OBJ), "packing": A(S())}, ["destination", "itinerary", "packing"]),
+  tools=["find_place", "web_search", "create_task"], requiresInternet=True, requiresExternalService=["open_meteo"], optionalServices=["jarvis_server"], cost="Sin costo (Open-Meteo); requisitos de entrada: 1 búsqueda.", risk="local_write",
+  limits={"timeoutSeconds": 90, "maxToolCalls": 5}, cancellation=CANCEL,
+  errorHandling="Destino no encontrado o sin Internet → plan parcial sin clima. Fechas lejanas → sin pronóstico, con aviso.",
+  maturity="implemented", privacy="Solo el destino viaja al geocodificador y al pronóstico.",
+  testCases=[{"name": "sin_red", "input": {"destination": "Monteverde", "start_date": "2025-10-10", "end_date": "2025-10-12"}, "expect": ["partial", "completed"]}])
+
+skill("meal_and_grocery_planner",
+  name="Comidas y compras", category="hogar",
+  description="Plan semanal de comidas con recetas costarricenses sencillas (respeta vegetariano, vegano, sin gluten, económico), lista de compras con cantidades según personas y lista del súper para marcar.",
+  exampleUtterances=["planifica las comidas de la semana para 4 personas", "haz la lista de compras del menú", "agrega leche a la lista del súper", "qué me falta comprar"],
+  inputSchema=O({"action": S(enum=["plan_week", "grocery_list", "add_item", "check_item", "list_groceries", "clear_checked"]), "people": I(1, 12), "preferences": A(S(enum=["vegetariano", "vegano", "sin_gluten", "economico"]), 4), "meals_per_day": A(S(enum=["desayuno", "almuerzo", "cena"]), 3), "meals": A(S(120), 21), "item": S(120), "quantity": S(40), "item_id": S(20)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, cost="Sin costo.", risk="local_write", limits={"timeoutSeconds": 20, "maxToolCalls": 0}, cancellation=CANCEL,
+  errorHandling="Sin recetas para las preferencias → pide tus platos. Platos propios sin receta → se avisan para añadir ingredientes a mano.",
+  maturity="implemented", privacy="Todo en el teléfono.", localRoute=True,
+  testCases=[{"name": "plan", "input": {"action": "plan_week", "people": 2, "preferences": ["vegetariano"]}, "expect": ["completed"]}])
+
+# ---------------------------------------------------------------- aprendizaje
+skill("personal_tutor",
+  name="Tutor personal", category="aprendizaje",
+  description="Tarjetas de estudio con repetición espaciada (SM-2): las crea de tus apuntes («término: definición») o de un tema (con IA), te pregunta las que tocan hoy, califica tus respuestas, hace cuestionarios de opción múltiple y explica temas con el servidor.",
+  exampleUtterances=["crea tarjetas de estudio con estos apuntes", "quiero estudiar las tarjetas de hoy", "hazme un cuestionario de biología", "explícame la fotosíntesis"],
+  inputSchema=O({"action": S(enum=["create_cards", "study", "answer", "quiz", "explain", "progress"]), "deck": S(80), "topic": S(200), "level": S(40), "text": S(50000), "cards": A(O({"front": S(500, 1), "back": S(1000, 1)}, ["front", "back"]), 200), "card_id": S(20), "grade": S(20), "answer": S(1000), "questions": I(1, 20), "question": S(500)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, optionalServices=["jarvis_server"], model="optional", cost="Sin costo; crear tarjetas por tema o explicar usa tokens.", risk="local_write",
+  limits={"timeoutSeconds": 60, "maxToolCalls": 0}, cancellation=CANCEL,
+  errorHandling="Menos de 4 tarjetas → no hay cuestionario. Explicar sin servidor → parcial con alternativa.",
+  maturity="implemented", privacy="Tarjetas en el teléfono; el tema solo va al servidor si pides IA.",
+  testCases=[{"name": "apuntes", "input": {"action": "create_cards", "deck": "biología", "text": "Célula: unidad básica de la vida\nMitocondria: orgánulo que produce energía\nADN: molécula que contiene la información genética"}, "expect": ["completed"]}])
+
+skill("language_coach",
+  name="Entrenador de idiomas", category="aprendizaje",
+  description="Vocabulario con repetición espaciada por idioma, libro de frases útiles (inglés, portugués, francés), corrección de oraciones en inglés con reglas para hispanohablantes y corrección completa con IA.",
+  exampleUtterances=["corrige esta oración en inglés: i have 30 years", "agrega estas palabras de inglés a mi vocabulario", "frases útiles en portugués para viajar", "practiquemos vocabulario de francés"],
+  inputSchema=O({"action": S(enum=["add_words", "study", "answer", "progress", "phrasebook", "check_sentence"]), "language": S(enum=["en", "pt", "fr", "it", "de"]), "words": A(O({"word": S(120, 1), "translation": S(200, 1), "example": S(300)}, ["word", "translation"]), 200), "sentence": S(1000), "card_id": S(20), "grade": S(20), "answer": S(500)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  requiresInternet=False, optionalServices=["jarvis_server"], model="optional", cost="Sin costo; corrección con IA usa tokens.", risk="local_write",
+  limits={"timeoutSeconds": 45, "maxToolCalls": 0}, cancellation=CANCEL,
+  errorHandling="Idioma sin reglas locales → corrección solo con IA (parcial si no hay servidor).",
+  maturity="implemented", privacy="Vocabulario en el teléfono.",
+  testCases=[{"name": "oracion", "input": {"action": "check_sentence", "language": "en", "sentence": "i have 30 years and people is nice"}, "expect": ["completed", "partial"]}])
+
+# ---------------------------------------------------------------- medios
+skill("voice_memo_inbox",
+  name="Bandeja de notas de voz", category="productividad",
+  description="Captura ideas y pendientes al vuelo (texto dictado o grabación transcrita por el servidor), sugiere si son tarea, recuerdo, gasto o idea y los convierte cuando lo pides, sin duplicar.",
+  exampleUtterances=["guarda esta idea: hacer una promoción de café en diciembre", "qué notas tengo en la bandeja", "convierte la nota 2 en tarea", "graba una nota de voz"],
+  inputSchema=O({"action": S(enum=["capture_text", "record", "list", "process", "convert", "archive"]), "text": S(5000), "source": S(40), "item_id": S(20), "to": S(enum=["task", "memory", "expense", "note"]), "max_seconds": I(5, 300)}, ["action"]),
+  outputSchema=OUT({"action": S()}, ["action"]),
+  tools=["transcribe_audio", "create_task", "remember", "save_document"], optionalPermissions=["microphone"], requiresInternet=False, optionalServices=["jarvis_server"],
+  cost="Sin costo para texto; grabar y transcribir usa el modelo de transcripción del servidor.", risk="local_write", limits={"timeoutSeconds": 180, "maxToolCalls": 2}, cancellation=CANCEL,
+  errorHandling="Nota ya convertida → no se duplica. Transcripción vacía → pide grabar de nuevo. Sin servidor → grabar requiere configuración; el texto funciona igual.",
+  maturity="implemented", privacy="Notas en el teléfono; el audio solo va al servidor si grabas para transcribir.", localRoute=True,
+  testCases=[{"name": "captura", "input": {"action": "capture_text", "text": "Tengo que llamar al contador mañana a las 10"}, "expect": ["completed"]}])
+
+skill("visual_scene_assistant",
+  name="Asistente visual", category="medios",
+  description="Describe lo que muestra una foto (de la cámara o de un archivo) o lee el texto que contiene, con el modelo de visión del servidor. La imagen no se guarda.",
+  exampleUtterances=["qué ves en esta foto", "lee el texto de este letrero", "describe la imagen que te voy a mostrar", "qué dice este documento en la foto"],
+  inputSchema=O({"source": S(enum=["camera", "file"]), "task": S(enum=["describe", "read_text"]), "question": S(500)}),
+  outputSchema=OUT({"task": S(), "text": S()}, ["task", "text"]),
+  tools=["analyze_image"], requiresInternet=True, requiresExternalService=["jarvis_server"], model="required", cost="Tokens de imagen del modelo de visión (centavos por imagen).", risk="read",
+  limits={"timeoutSeconds": 120, "maxToolCalls": 1}, cancellation=CANCEL_RO,
+  errorHandling="Sin servidor → requiere configuración. Foto cancelada → no hace nada. Descripción con avisos de posibles errores.",
+  maturity="implemented", privacy="La imagen se envía al servidor y a OpenAI solo cuando la tomas o eliges para esta función; no se almacena.",
+  testCases=[{"name": "sin_servidor", "input": {"source": "camera", "task": "describe"}, "expect": ["needs_configuration"]}])
+
+skill("barcode_business_card_scanner",
+  name="Escáner de códigos y tarjetas", category="medios",
+  description="Lee códigos de barras y QR en el teléfono (ZXing): busca el producto en Open Food Facts y puede sumarlo al inventario; lee tarjetas de presentación (QR vCard en el teléfono o foto con el servidor) y guarda el contacto tras tu confirmación.",
+  exampleUtterances=["escanea este código de barras", "lee esta tarjeta de presentación y guarda el contacto", "escanea el producto y súmalo al inventario", "qué producto es este código"],
+  inputSchema=O({"mode": S(enum=["barcode", "business_card"]), "source": S(enum=["camera", "file"]), "add_to_inventory": B(), "quantity": N(0, 1e6), "name": S(120), "save_contact": B()}, ["mode"]),
+  outputSchema=OUT({"mode": S()}, ["mode"]),
+  tools=["lookup_product", "analyze_image"], requiresInternet=False, optionalServices=["open_food_facts", "jarvis_server"], cost="Códigos: sin costo. Tarjetas por foto: tokens de visión.", risk="local_write",
+  limits={"timeoutSeconds": 120, "maxToolCalls": 2}, cancellation=CANCEL,
+  errorHandling="Código ilegible → consejos de encuadre. Producto ausente en Open Food Facts → se dice. Tarjeta leída por IA → se pide confirmación antes de guardar.",
+  maturity="implemented", privacy="Los códigos se leen en el teléfono; solo las fotos de tarjetas sin QR van al servidor.",
+  testCases=[{"name": "sin_imagen", "input": {"mode": "barcode", "source": "camera"}, "expect": ["cancelled"]}])
+
 def main(outdir):
     os.makedirs(outdir, exist_ok=True)
     order = ["id", "name", "description", "category", "exampleUtterances", "inputSchema", "outputSchema", "tools", "requiredPermissions",

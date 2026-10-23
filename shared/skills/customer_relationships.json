@@ -1,0 +1,127 @@
+{
+  "id": "customer_relationships",
+  "name": "Relación con clientes (CRM)",
+  "description": "CRM sobre tus prospectos y contactos: registra llamadas, reuniones y mensajes, programa seguimientos con recordatorio, muestra el historial, cambia el estado y lista quién lleva días sin contacto.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "registra que llamé a Ferretería El Clavo y quedé de enviar precios",
+    "historial con Súper Uno",
+    "a quién no he contactado en dos semanas",
+    "marca a Café Tres como cliente"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "log_interaction",
+          "history",
+          "follow_ups",
+          "set_status",
+          "contacts"
+        ]
+      },
+      "prospect_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "contact_name": {
+        "type": "string",
+        "maxLength": 160
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "llamada",
+          "reunión",
+          "correo",
+          "mensaje",
+          "visita",
+          "nota"
+        ]
+      },
+      "summary": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "follow_up": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "follow_up_when": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "NUEVO",
+          "CONTACTADO",
+          "INTERESADO",
+          "NEGOCIANDO",
+          "CLIENTE",
+          "DESCARTADO"
+        ]
+      },
+      "days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 365
+      },
+      "query": {
+        "type": "string",
+        "maxLength": 120
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task",
+    "update_prospect"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Contacto no guardado como prospecto → se registra como contacto libre y se avisa. Nombre ambiguo → pide el id.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "contactos",
+      "input": {
+        "action": "contacts"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "id": "contract_review",
+  "name": "Revisión de contratos",
+  "description": "Revisión orientativa de contratos en español: identifica cláusulas (plazo, renovación, terminación, penalidades, pagos, exclusividad, jurisdicción…), señala riesgos y cláusulas ausentes, extrae montos y fechas y, si lo pides, lo explica con IA. No es asesoría legal.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "revisa este contrato de alquiler",
+    "qué riesgos tiene este contrato",
+    "busca cláusulas de renovación automática y penalidades",
+    "analiza el contrato de servicios que te voy a dar"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "enum": [
+          "text",
+          "file"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 400000
+      },
+      "party": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "question": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "use_ai": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "source"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "clauses": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "risks": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "missing": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "clauses",
+      "risks",
+      "missing",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; el análisis con IA usa tokens (modo profundo).",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 120,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "PDF no soportado → pide DOCX o texto. Siempre recuerda que no sustituye a un abogado.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El contrato se analiza en el teléfono; solo va al servidor si activas use_ai.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "texto",
+      "input": {
+        "source": "text",
+        "text": "El presente contrato tendrá una duración de un año y se renovará automáticamente por periodos iguales. En caso de terminación anticipada, el arrendatario pagará una multa de dos meses de renta. Las partes se someten a los tribunales de Miami, Florida."
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

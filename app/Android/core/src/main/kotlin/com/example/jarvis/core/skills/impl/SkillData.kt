@@ -18,6 +18,7 @@ object Collections {
     const val INVENTORY = "inventory.items"
     const val MOVEMENTS = "inventory.movements"
     const val INTERACTIONS = "crm.interactions"
+    const val CONTACTS = "crm.contacts"
     const val FLASHCARDS = "learning.cards"
     const val ROUTINES = "automation.routines"
     const val INBOX = "inbox.items"
@@ -83,6 +84,10 @@ data class InventoryItem(
 @Serializable
 data class Interaction(val prospectId: Long?, val contactName: String, val kind: String, val summary: String, val date: String, val followUp: String? = null, val followUpTaskId: Long? = null)
 
+/** Contacto que no viene de OpenStreetMap (p. ej. tarjeta de presentación). Datos tal como se capturaron. */
+@Serializable
+data class Contact(val name: String, val company: String? = null, val title: String? = null, val phone: String? = null, val email: String? = null, val website: String? = null, val address: String? = null, val source: String, val createdAt: String, val verified: Boolean = false)
+
 @Serializable
 data class Flashcard(
     val deck: String,
@@ -121,6 +126,7 @@ fun SkillContext.quotes() = collection(Collections.QUOTES, Quote.serializer())
 fun SkillContext.inventory() = collection(Collections.INVENTORY, InventoryItem.serializer())
 fun SkillContext.movements() = collection(Collections.MOVEMENTS, StockMovement.serializer())
 fun SkillContext.interactions() = collection(Collections.INTERACTIONS, Interaction.serializer())
+fun SkillContext.contacts() = collection(Collections.CONTACTS, Contact.serializer())
 fun SkillContext.flashcards() = collection(Collections.FLASHCARDS, Flashcard.serializer())
 fun SkillContext.routines() = collection(Collections.ROUTINES, Routine.serializer())
 fun SkillContext.inbox() = collection(Collections.INBOX, InboxItem.serializer())

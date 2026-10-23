@@ -1,0 +1,110 @@
+{
+  "id": "voice_memo_inbox",
+  "name": "Bandeja de notas de voz",
+  "description": "Captura ideas y pendientes al vuelo (texto dictado o grabación transcrita por el servidor), sugiere si son tarea, recuerdo, gasto o idea y los convierte cuando lo pides, sin duplicar.",
+  "category": "productividad",
+  "exampleUtterances": [
+    "guarda esta idea: hacer una promoción de café en diciembre",
+    "qué notas tengo en la bandeja",
+    "convierte la nota 2 en tarea",
+    "graba una nota de voz"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "capture_text",
+          "record",
+          "list",
+          "process",
+          "convert",
+          "archive"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 5000
+      },
+      "source": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "item_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "to": {
+        "type": "string",
+        "enum": [
+          "task",
+          "memory",
+          "expense",
+          "note"
+        ]
+      },
+      "max_seconds": {
+        "type": "integer",
+        "minimum": 5,
+        "maximum": 300
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "transcribe_audio",
+    "create_task",
+    "remember",
+    "save_document"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [
+    "microphone"
+  ],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "none",
+  "cost": "Sin costo para texto; grabar y transcribir usa el modelo de transcripción del servidor.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 180,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Nota ya convertida → no se duplica. Transcripción vacía → pide grabar de nuevo. Sin servidor → grabar requiere configuración; el texto funciona igual.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Notas en el teléfono; el audio solo va al servidor si grabas para transcribir.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "captura",
+      "input": {
+        "action": "capture_text",
+        "text": "Tengo que llamar al contador mañana a las 10"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

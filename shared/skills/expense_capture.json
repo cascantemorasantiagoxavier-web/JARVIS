@@ -1,0 +1,128 @@
+{
+  "id": "expense_capture",
+  "name": "Registro de gastos e ingresos",
+  "description": "Registra gastos e ingresos dichos en lenguaje natural («gasté ₡5 000 en gasolina ayer»), con categoría automática y aviso de presupuesto; también desde la foto de un recibo (con el servidor) tras tu confirmación.",
+  "category": "finanzas",
+  "exampleUtterances": [
+    "gasté 5000 colones en gasolina",
+    "anota que pagué 20 dólares de almuerzo ayer",
+    "registra un ingreso de 150 mil colones por una venta",
+    "lee este recibo y regístralo como gasto"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "add_from_text",
+          "add",
+          "from_receipt",
+          "list",
+          "delete"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "amount": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "category": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "date": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "expense",
+          "income"
+        ]
+      },
+      "period": {
+        "type": "string",
+        "enum": [
+          "week",
+          "month",
+          "last_month",
+          "year",
+          "all"
+        ]
+      },
+      "transaction_id": {
+        "type": "string",
+        "maxLength": 20
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "analyze_image"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "none",
+  "cost": "Sin costo; leer recibos usa el modelo de visión del servidor.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin monto o sin moneda → pide el dato (nunca asume la moneda). Recibo ilegible → pide registrarlo por voz. Borrar pide confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Datos financieros solo en el teléfono. La foto del recibo solo va al servidor si usas esa opción.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "texto",
+      "input": {
+        "action": "add_from_text",
+        "text": "gasté 5000 colones en gasolina ayer"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

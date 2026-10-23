@@ -1,0 +1,124 @@
+{
+  "id": "negotiation_coach",
+  "name": "Entrenador de negociación",
+  "description": "Prepara negociaciones con objetivo, límite (BATNA), apertura, concesiones decrecientes y zona de acuerdo; evalúa ofertas (aceptar, contraofertar o rechazar) y entrena respuestas a tácticas frecuentes.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "ayúdame a preparar una negociación: quiero vender a 50 mil y mi mínimo es 42 mil",
+    "me ofrecieron 44 mil, qué hago",
+    "cómo respondo si me dicen que es su última oferta",
+    "plan de negociación como comprador"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "plan",
+          "evaluate_offer",
+          "practice"
+        ]
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "seller",
+          "buyer"
+        ]
+      },
+      "target": {
+        "type": "number",
+        "minimum": 0
+      },
+      "walk_away": {
+        "type": "number",
+        "minimum": 0
+      },
+      "opening": {
+        "type": "number",
+        "minimum": 0
+      },
+      "offer": {
+        "type": "number",
+        "minimum": 0
+      },
+      "their_limit": {
+        "type": "number",
+        "minimum": 0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "maxItems": 10
+      },
+      "context": {
+        "type": "string",
+        "maxLength": 1000
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; la práctica con IA usa tokens.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 45,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Límite incoherente con el objetivo → se explica. Sin zona de acuerdo → recomienda preparar la alternativa.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Las cifras solo salen del teléfono si pides práctica con IA.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "plan",
+      "input": {
+        "action": "plan",
+        "role": "seller",
+        "target": 50000,
+        "walk_away": 42000,
+        "currency": "CRC"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

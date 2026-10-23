@@ -1,0 +1,115 @@
+{
+  "id": "supplier_verifier",
+  "name": "Verificador de proveedores",
+  "description": "Revisa señales de confianza de un proveedor: correo gratuito o del dominio, código de país del teléfono, formato de cédula jurídica, datos publicados en su sitio y menciones de fraude en la web, con puntuación orientativa y recomendaciones.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "verifica este proveedor de China antes de pagarle",
+    "es confiable el proveedor Shenzhen LED Co",
+    "revisa si este correo y teléfono de proveedor son coherentes",
+    "verifica la empresa Distribuidora XYZ"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 160
+      },
+      "website": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "email": {
+        "type": "string",
+        "maxLength": 320
+      },
+      "phone": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "country": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "tax_id": {
+        "type": "string",
+        "maxLength": 30
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "score": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "verdict": {
+        "type": "string"
+      },
+      "signals": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": [
+      "name",
+      "score",
+      "verdict",
+      "signals"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "fetch_page",
+    "web_search"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "none",
+  "cost": "Sin servidor: sin costo. Con servidor: 1 búsqueda y 1 lectura.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin servidor → solo comprobaciones de formato y coherencia (parcial). Resultados negativos se presentan como señales para revisar, no como prueba.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Nombre, sitio y datos del proveedor van al buscador solo si hay servidor.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "formatos",
+      "input": {
+        "name": "Shenzhen LED Co",
+        "email": "ventas.led@gmail.com",
+        "phone": "+86 755 1234 5678",
+        "country": "China",
+        "website": "https://shenzhen-led.example"
+      },
+      "expect": [
+        "partial",
+        "completed"
+      ]
+    }
+  ]
+}

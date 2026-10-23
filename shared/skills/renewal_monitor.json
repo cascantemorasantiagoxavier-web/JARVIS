@@ -1,0 +1,115 @@
+{
+  "id": "renewal_monitor",
+  "name": "Monitor de renovaciones",
+  "description": "Registra vencimientos (marchamo, licencia, pasaporte, seguros, suscripciones, dominios…) y programa un aviso días antes como tarea con recordatorio; lista lo que vence pronto.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "avísame 15 días antes de que venza mi licencia el 10 de marzo",
+    "qué vence pronto",
+    "registra el vencimiento del pasaporte el 2026-05-20",
+    "recuérdame renovar el marchamo"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "add",
+          "list",
+          "upcoming",
+          "delete"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "documento",
+          "vehículo",
+          "suscripción",
+          "seguro",
+          "servicio",
+          "licencia",
+          "otro"
+        ]
+      },
+      "expires_on": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "remind_days_before": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 120
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "renewal_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 730
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task",
+    "delete_task"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Fecha no entendida → pide AAAA-MM-DD. Aviso en el pasado → se programa para mañana con aviso. Borrar pide confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "marchamo",
+      "input": {
+        "action": "add",
+        "name": "Marchamo",
+        "kind": "vehículo"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

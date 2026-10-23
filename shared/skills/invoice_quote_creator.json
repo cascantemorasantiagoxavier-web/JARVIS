@@ -1,0 +1,174 @@
+{
+  "id": "invoice_quote_creator",
+  "name": "Cotizaciones y proformas",
+  "description": "Crea cotizaciones y facturas proforma numeradas con líneas, IVA (13 % por defecto) y totales exactos, genera el documento HTML, cambia su estado, registra el pago como ingreso y abre el correo para enviarla (con confirmación).",
+  "category": "finanzas",
+  "exampleUtterances": [
+    "haz una cotización para Café La Montaña de 10 sacos a 45 mil cada uno",
+    "crea una proforma para el cliente Ana Mora",
+    "marca como pagada la cotización 2",
+    "envía la cotización 1 por correo"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "create",
+          "list",
+          "update_status",
+          "record_payment",
+          "send"
+        ]
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "quote",
+          "proforma"
+        ]
+      },
+      "client": {
+        "type": "string",
+        "maxLength": 160
+      },
+      "client_email": {
+        "type": "string",
+        "maxLength": 320
+      },
+      "issuer": {
+        "type": "string",
+        "maxLength": 160
+      },
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "quantity": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit_price": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "description",
+            "quantity",
+            "unit_price"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 100
+      },
+      "tax_rate": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "valid_days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 365
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "quote_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "sent",
+          "accepted",
+          "rejected",
+          "paid"
+        ]
+      },
+      "save": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "save_document",
+    "compose_email"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Líneas incompletas → se indican. Pago ya registrado → no se duplica. Enviar requiere confirmación.",
+  "maturity": "partial",
+  "missing": [
+    "factura electrónica oficial de Hacienda (requiere firma digital y la API de comprobantes electrónicos)",
+    "adjuntar el PDF al correo (se adjunta el HTML a mano)"
+  ],
+  "privacy": "Documentos y datos de clientes solo en el teléfono.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "cotizacion",
+      "input": {
+        "action": "create",
+        "client": "Café La Montaña",
+        "lines": [
+          {
+            "description": "Saco de café 46 kg",
+            "quantity": 10,
+            "unit_price": 45000
+          }
+        ],
+        "save": false
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

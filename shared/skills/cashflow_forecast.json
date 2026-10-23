@@ -1,0 +1,118 @@
+{
+  "id": "cashflow_forecast",
+  "name": "Proyección de flujo de caja",
+  "description": "Proyecta tu saldo de 1 a 12 meses con ingresos y gastos fijos, el promedio de gasto variable y las cotizaciones aceptadas, y avisa en qué mes el saldo sería negativo. Las suposiciones se informan.",
+  "category": "finanzas",
+  "exampleUtterances": [
+    "proyecta mi flujo de caja de los próximos 3 meses",
+    "agrega el alquiler de 300 mil como gasto fijo el día 1",
+    "me va a alcanzar el dinero hasta diciembre",
+    "lista mis gastos fijos"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "forecast",
+          "add_recurring",
+          "list_recurring",
+          "delete_recurring"
+        ]
+      },
+      "months": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "starting_balance": {
+        "type": "number",
+        "minimum": -1000000000000.0,
+        "maximum": 1000000000000.0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "amount": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "expense",
+          "income"
+        ]
+      },
+      "day_of_month": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 31
+      },
+      "recurring_id": {
+        "type": "string",
+        "maxLength": 20
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin saldo inicial → lo estima con tus movimientos y lo advierte. Borrar pide confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "proyeccion",
+      "input": {
+        "action": "forecast",
+        "months": 3,
+        "starting_balance": 500000,
+        "currency": "CRC"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

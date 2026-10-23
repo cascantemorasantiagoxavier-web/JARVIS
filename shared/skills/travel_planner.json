@@ -1,0 +1,133 @@
+{
+  "id": "travel_planner",
+  "name": "Planificador de viajes",
+  "description": "Planifica un viaje: ubica el destino, trae el pronóstico diario (hasta 16 días), arma un itinerario base, lista de equipaje según clima y propósito, reparto de presupuesto y, si es al extranjero, busca requisitos de entrada (con el servidor).",
+  "category": "asistente",
+  "exampleUtterances": [
+    "planifica mi viaje a Monteverde del 10 al 12 de octubre",
+    "voy a Panamá por negocios la próxima semana, qué llevo",
+    "arma un itinerario para Guanacaste con playa y comida",
+    "qué clima hará en mi viaje a Puerto Viejo"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "destination": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 120
+      },
+      "start_date": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "end_date": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "purpose": {
+        "type": "string",
+        "enum": [
+          "ocio",
+          "negocios"
+        ]
+      },
+      "interests": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "maxItems": 8
+      },
+      "budget": {
+        "type": "number",
+        "minimum": 0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "create_tasks": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "destination",
+      "start_date",
+      "end_date"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "destination": {
+        "type": "string"
+      },
+      "itinerary": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "packing": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "destination",
+      "itinerary",
+      "packing"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "find_place",
+    "web_search",
+    "create_task"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "open_meteo"
+  ],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "none",
+  "cost": "Sin costo (Open-Meteo); requisitos de entrada: 1 búsqueda.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 5
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Destino no encontrado o sin Internet → plan parcial sin clima. Fechas lejanas → sin pronóstico, con aviso.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo el destino viaja al geocodificador y al pronóstico.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_red",
+      "input": {
+        "destination": "Monteverde",
+        "start_date": "2025-10-10",
+        "end_date": "2025-10-12"
+      },
+      "expect": [
+        "partial",
+        "completed"
+      ]
+    }
+  ]
+}

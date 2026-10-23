@@ -26,3 +26,11 @@ object NoMedia : MediaGateway {
     override suspend fun capturePhoto() = MediaResult.Unavailable("No hay cámara en este entorno.")
     override suspend fun recordAudio(maxSeconds: Int) = MediaResult.Unavailable("No hay grabadora en este entorno.")
 }
+
+/** Píxeles ARGB de una imagen. */
+class Pixels(val width: Int, val height: Int, val argb: IntArray)
+
+/** Decodifica JPEG/PNG a píxeles. En Android lo implementa BitmapFactory; sin implementación devuelve null. */
+fun interface PixelDecoder {
+    fun decode(bytes: ByteArray): Pixels?
+}

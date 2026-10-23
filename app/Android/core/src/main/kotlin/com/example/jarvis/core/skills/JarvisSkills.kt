@@ -20,6 +20,16 @@ object JarvisSkills {
         DeepResearchSkill(), ImportExportResearchSkill(), PriceComparisonSkill(),
         // Comunicación y marketing
         MessageDrafterSkill(), EmailAssistantSkill(), MessagingAssistantSkill(), SocialMediaManagerSkill(), MarketingOptimizerSkill(), WebsiteBuilderSkill(),
+        // Finanzas
+        ExpenseCaptureSkill(), PersonalFinanceSkill(), CashflowForecastSkill(), InvoiceQuoteCreatorSkill(),
+        // Clientes, negociación y mercado
+        CustomerRelationshipsSkill(), NegotiationCoachSkill(), ContractReviewSkill(), CompetitorIntelligenceSkill(), SupplierVerifierSkill(),
+        // Planificación y hogar
+        ScheduleOptimizerSkill(), RenewalMonitorSkill(), TravelPlannerSkill(), MealAndGroceryPlannerSkill(),
+        // Aprendizaje
+        PersonalTutorSkill(), LanguageCoachSkill(),
+        // Voz, imagen y escáner
+        VoiceMemoInboxSkill(), VisualSceneAssistantSkill(), BarcodeBusinessCardScannerSkill(),
     )
 
     fun install(tools: ToolRegistry, registry: SkillRegistry, engine: SkillEngine, env: SkillEnvironment) {

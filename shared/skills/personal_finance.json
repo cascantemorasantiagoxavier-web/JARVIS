@@ -1,0 +1,101 @@
+{
+  "id": "personal_finance",
+  "name": "Finanzas personales",
+  "description": "Resumen de ingresos, gastos y balance por moneda y categoría, presupuestos mensuales con alertas al 80 %, mayores gastos y comparación con el mes anterior, a partir de tus movimientos registrados.",
+  "category": "finanzas",
+  "exampleUtterances": [
+    "cuánto he gastado este mes",
+    "pon un presupuesto de comida de 150 mil colones",
+    "cómo van mis finanzas",
+    "compara mis gastos con el mes pasado"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "summary",
+          "set_budget",
+          "budgets",
+          "top_expenses",
+          "compare_months"
+        ]
+      },
+      "period": {
+        "type": "string",
+        "enum": [
+          "week",
+          "month",
+          "last_month",
+          "year",
+          "all"
+        ]
+      },
+      "category": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "limit": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin movimientos → lo dice. Monedas distintas se resumen por separado (sin convertir).",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "resumen",
+      "input": {
+        "action": "summary",
+        "period": "month"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

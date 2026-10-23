@@ -1,0 +1,95 @@
+{
+  "id": "competitor_intelligence",
+  "name": "Inteligencia competitiva",
+  "description": "Analiza la competencia de tu categoría en una zona con OpenStreetMap: cuántos hay, dónde se concentran, qué porcentaje publica teléfono o sitio web y, leyendo algunos sitios, qué ofrecen y precios publicados.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "analiza mi competencia: panaderías en San Pedro",
+    "cuántas ferreterías hay en Heredia y cuántas tienen página web",
+    "estudio de competidores de cafeterías en Escazú",
+    "qué tan saturado está el mercado de veterinarias en Cartago"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 80
+      },
+      "location": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "own_business_name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "read_websites": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 5
+      }
+    },
+    "required": [
+      "category"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "competitors": {
+        "type": "number",
+        "minimum": 0
+      },
+      "insights": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "competitors",
+      "insights"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "business_search",
+    "fetch_page"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "1 búsqueda de negocios y hasta 5 lecturas.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 150,
+    "maxToolCalls": 7
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin servidor → requiere configuración. Sitios ilegibles → se omiten con aviso. Cobertura de OSM incompleta → se advierte.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo categoría y zona viajan al servidor.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "category": "panaderías",
+        "location": "San Pedro"
+      },
+      "expect": [
+        "needs_configuration"
+      ]
+    }
+  ]
+}

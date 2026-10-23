@@ -94,6 +94,7 @@ class SkillServices(
     val weatherPlace: suspend () -> Place?,
     val llm: () -> SkillLlm?,
     val time: TimeSource,
+    val pixels: com.example.jarvis.core.device.PixelDecoder = com.example.jarvis.core.device.PixelDecoder { null },
 )
 
 class SkillSecurityException(message: String) : RuntimeException(message)

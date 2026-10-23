@@ -1,0 +1,139 @@
+{
+  "id": "personal_tutor",
+  "name": "Tutor personal",
+  "description": "Tarjetas de estudio con repetición espaciada (SM-2): las crea de tus apuntes («término: definición») o de un tema (con IA), te pregunta las que tocan hoy, califica tus respuestas, hace cuestionarios de opción múltiple y explica temas con el servidor.",
+  "category": "aprendizaje",
+  "exampleUtterances": [
+    "crea tarjetas de estudio con estos apuntes",
+    "quiero estudiar las tarjetas de hoy",
+    "hazme un cuestionario de biología",
+    "explícame la fotosíntesis"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "create_cards",
+          "study",
+          "answer",
+          "quiz",
+          "explain",
+          "progress"
+        ]
+      },
+      "deck": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "topic": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "level": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 50000
+      },
+      "cards": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "front": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "back": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "front",
+            "back"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 200
+      },
+      "card_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "grade": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "answer": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "questions": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "question": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; crear tarjetas por tema o explicar usa tokens.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Menos de 4 tarjetas → no hay cuestionario. Explicar sin servidor → parcial con alternativa.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Tarjetas en el teléfono; el tema solo va al servidor si pides IA.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "apuntes",
+      "input": {
+        "action": "create_cards",
+        "deck": "biología",
+        "text": "Célula: unidad básica de la vida\nMitocondria: orgánulo que produce energía\nADN: molécula que contiene la información genética"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

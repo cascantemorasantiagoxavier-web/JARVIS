@@ -1,0 +1,99 @@
+{
+  "id": "barcode_business_card_scanner",
+  "name": "Escáner de códigos y tarjetas",
+  "description": "Lee códigos de barras y QR en el teléfono (ZXing): busca el producto en Open Food Facts y puede sumarlo al inventario; lee tarjetas de presentación (QR vCard en el teléfono o foto con el servidor) y guarda el contacto tras tu confirmación.",
+  "category": "medios",
+  "exampleUtterances": [
+    "escanea este código de barras",
+    "lee esta tarjeta de presentación y guarda el contacto",
+    "escanea el producto y súmalo al inventario",
+    "qué producto es este código"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": [
+          "barcode",
+          "business_card"
+        ]
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "camera",
+          "file"
+        ]
+      },
+      "add_to_inventory": {
+        "type": "boolean"
+      },
+      "quantity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000.0
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "save_contact": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "mode"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "mode"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "lookup_product",
+    "analyze_image"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "open_food_facts",
+    "jarvis_server"
+  ],
+  "model": "none",
+  "cost": "Códigos: sin costo. Tarjetas por foto: tokens de visión.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 120,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Código ilegible → consejos de encuadre. Producto ausente en Open Food Facts → se dice. Tarjeta leída por IA → se pide confirmación antes de guardar.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Los códigos se leen en el teléfono; solo las fotos de tarjetas sin QR van al servidor.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_imagen",
+      "input": {
+        "mode": "barcode",
+        "source": "camera"
+      },
+      "expect": [
+        "cancelled"
+      ]
+    }
+  ]
+}

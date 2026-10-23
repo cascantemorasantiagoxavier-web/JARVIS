@@ -1,0 +1,132 @@
+{
+  "id": "schedule_optimizer",
+  "name": "Optimizador de agenda",
+  "description": "Organiza tu jornada: toma los eventos del calendario y las tareas fijas, calcula los huecos libres y ubica las tareas pendientes por urgencia y prioridad (estima duraciones «30 min», «2 h»), con márgenes entre bloques.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "organiza mi día",
+    "acomoda mis tareas de mañana en la agenda",
+    "planifica mi día de 8 a 5",
+    "optimiza mi agenda de hoy"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "work_start": {
+        "type": "string",
+        "maxLength": 5
+      },
+      "work_end": {
+        "type": "string",
+        "maxLength": 5
+      },
+      "default_task_minutes": {
+        "type": "integer",
+        "minimum": 10,
+        "maximum": 480
+      },
+      "buffer_minutes": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 60
+      },
+      "include_overdue": {
+        "type": "boolean"
+      },
+      "include_undated": {
+        "type": "boolean"
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "date": {
+        "type": "string"
+      },
+      "blocks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "type",
+            "title"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "unscheduled": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "utilization_percent": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "required": [
+      "date",
+      "blocks",
+      "unscheduled",
+      "utilization_percent"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [
+    "calendar.read"
+  ],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin permiso de calendario → plan parcial con aviso. Tareas que no caben → se listan.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "manana",
+      "input": {
+        "date": "tomorrow"
+      },
+      "expect": [
+        "completed",
+        "partial"
+      ]
+    }
+  ]
+}
