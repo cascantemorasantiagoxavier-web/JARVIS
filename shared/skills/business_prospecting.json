@@ -1,0 +1,115 @@
+{
+  "id": "business_prospecting",
+  "name": "Prospección de negocios",
+  "description": "Busca negocios reales en OpenStreetMap por categoría y zona de Costa Rica, los ordena por datos de contacto disponibles (cada dato con su estado) y guarda los mejores como prospectos.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "busca ferreterías en Heredia y guarda las 5 mejores como prospectos",
+    "encuentra clientes potenciales: panaderías en Cartago",
+    "prospecta restaurantes en Escazú con teléfono",
+    "busca supermercados cerca de mí para venderles"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 80
+      },
+      "location": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "near_me": {
+        "type": "boolean"
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 50
+      },
+      "save_top": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10
+      },
+      "note": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "only_with_phone": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "category"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "total": {
+        "type": "number",
+        "minimum": 0
+      },
+      "ranked": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "saved": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": [
+      "ranked",
+      "saved"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "business_search",
+    "save_prospect"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [
+    "location"
+  ],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo de IA (OpenStreetMap es gratuito); usa tu servidor.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 12
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin servidor → requiere configuración. Zona no encontrada → pide otra. Sin teléfono en la fuente → «no disponible», nunca inventado.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo la categoría y la zona (o tu ubicación aproximada si la pides) van al servidor.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "category": "ferreterías",
+        "location": "Heredia"
+      },
+      "expect": [
+        "needs_configuration",
+        "completed"
+      ]
+    }
+  ]
+}

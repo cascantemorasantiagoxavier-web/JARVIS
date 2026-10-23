@@ -1,0 +1,129 @@
+{
+  "id": "conversation_memory",
+  "name": "Memoria persistente",
+  "description": "Gestiona la memoria de largo plazo: recordar, buscar, corregir, olvidar (con confirmación), listar y exportar a Markdown. Los recuerdos privados no se envían al modelo ni se exportan sin confirmar.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "qué recuerdas de mí",
+    "guarda en tu memoria que prefiero café sin azúcar",
+    "olvida el recuerdo 4",
+    "exporta mis recuerdos"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "remember",
+          "recall",
+          "update",
+          "forget",
+          "list",
+          "export"
+        ]
+      },
+      "content": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "PREFERENCE",
+          "FACT",
+          "PROJECT",
+          "CONTACT",
+          "OTHER"
+        ]
+      },
+      "private": {
+        "type": "boolean"
+      },
+      "memory_id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "query": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "include_private": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "memories": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "exported": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "file": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "remember",
+    "recall",
+    "update_memory",
+    "forget",
+    "save_document"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Duplicados → avisa sin guardar dos veces. Olvidar o exportar privados → confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Memoria solo en el teléfono; los privados se muestran como [privado].",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "listar",
+      "input": {
+        "action": "list"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

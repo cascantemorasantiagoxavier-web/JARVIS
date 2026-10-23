@@ -1,0 +1,103 @@
+{
+  "id": "daily_briefing",
+  "name": "Resumen del día",
+  "description": "Resumen hablado del día: tareas con fecha y vencidas, eventos del calendario (si das permiso), pronóstico del clima, renovaciones próximas, inventario bajo y notas de voz pendientes.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "dame el resumen del día",
+    "cómo viene mi día",
+    "resumen de mañana",
+    "briefing de hoy"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "day": {
+        "type": "string",
+        "enum": [
+          "today",
+          "tomorrow"
+        ]
+      },
+      "include_weather": {
+        "type": "boolean"
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "day": {
+        "type": "string"
+      },
+      "sections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string"
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "heading",
+            "lines"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "spoken": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "day",
+      "sections",
+      "spoken"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [
+    "calendar.read"
+  ],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "open_meteo"
+  ],
+  "model": "none",
+  "cost": "Sin costo (Open-Meteo es gratuito).",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin permiso de calendario o sin Internet para el clima → resumen parcial que dice qué faltó.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Todo se calcula en el teléfono; solo se consulta el clima a Open-Meteo con la ubicación configurada.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "hoy",
+      "input": {
+        "day": "today",
+        "include_weather": false
+      },
+      "expect": [
+        "completed",
+        "partial"
+      ]
+    }
+  ]
+}

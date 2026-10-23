@@ -78,7 +78,10 @@ class SkillEngine(
             if (!permissions.ensure(p)) return out(Outcome.denied("${manifest.name} necesita el permiso \"$p\".", "Concede el permiso cuando JARVIS lo pida o en Ajustes del sistema."))
         }
 
-        val ctx = SkillContext(manifest, services, env, executor, toolCtx.forSkill(id), confirmation, permissions, progress)
+        // Solo las rutinas pueden encadenar habilidades (y nunca rutinas dentro de rutinas).
+        val runner: (suspend (String, JsonObject) -> SkillResult)? =
+            if (id == ROUTINES) { sub, subInput -> if (sub == ROUTINES) throw SkillSecurityException("Una rutina no puede ejecutar otra rutina.") else run(sub, subInput, toolCtx, progress) } else null
+        val ctx = SkillContext(manifest, services, env, executor, toolCtx.forSkill(id), confirmation, permissions, progress, runner, registry::manifest)
         val runId = runIds.getAndIncrement()
         val outcome = try {
             coroutineScope {
@@ -112,6 +115,10 @@ class SkillEngine(
             }
         }
         return out(outcome, ctx)
+    }
+
+    companion object {
+        const val ROUTINES = "routine_automation"
     }
 
     private fun recoveryFor(missing: List<String>): String = when {

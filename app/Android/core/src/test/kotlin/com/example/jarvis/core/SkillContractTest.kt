@@ -121,6 +121,7 @@ class SkillContractTest {
     @Test fun cancellationReturnsCancelledWithoutPartialWrites() = runBlocking {
         for (id in TestKit().skills.ids()) {
             val kit = TestKit()
+            kit.serverConfigured = true // que todas lleguen a ejecutarse
             val engine = SkillEngine(kit.skills, kit.executor, kit.skillServices, kit.env, PermissionGate { true }, ConfirmationGate { _, _ -> true }, {}, beforeExecute = { delay(5_000) })
             val before = kit.store.list("inventory.items").size + kit.taskRepo.items.size + kit.device.actions.size
             val run = async { engine.run(id, kit.skills.manifest(id)!!.testCases.first().input, ctx(kit)) }

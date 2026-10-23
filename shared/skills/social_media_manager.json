@@ -1,0 +1,138 @@
+{
+  "id": "social_media_manager",
+  "name": "Gestor de redes sociales",
+  "description": "Redacta publicaciones adaptadas a cada red (límites de caracteres y hashtags), crea un calendario de contenido, programa recordatorios para publicar y abre el menú de compartir. No publica por sí mismo.",
+  "category": "marketing",
+  "exampleUtterances": [
+    "escribe una publicación para Instagram sobre el nuevo café de temporada",
+    "haz un calendario de contenido para dos semanas",
+    "adapta este texto para X y LinkedIn",
+    "recuérdame publicar el viernes a las 6 pm"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "draft_post",
+          "adapt",
+          "calendar",
+          "schedule",
+          "share"
+        ]
+      },
+      "topic": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 5000
+      },
+      "platforms": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "instagram",
+            "facebook",
+            "x",
+            "linkedin",
+            "tiktok",
+            "whatsapp_status"
+          ]
+        },
+        "maxItems": 6
+      },
+      "tone": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "hashtags": {
+        "type": "boolean"
+      },
+      "call_to_action": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 31
+      },
+      "posts_per_week": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 7
+      },
+      "start_date": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "date": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task",
+    "share_text"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; redacción con IA usa tokens.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 45,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Texto demasiado largo para una red → se recorta y se informa. Compartir pide confirmación.",
+  "maturity": "partial",
+  "missing": [
+    "publicar directamente (requiere conectar cada red con su API, permisos y revisión de la app)",
+    "métricas de las publicaciones"
+  ],
+  "privacy": "Nada se publica sin que tú lo hagas.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "post",
+      "input": {
+        "action": "draft_post",
+        "text": "Llegó nuestro café de temporada, tostado esta semana en Heredia. Pídelo hoy por WhatsApp.",
+        "platforms": [
+          "instagram",
+          "x"
+        ]
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "id": "meeting_assistant",
+  "name": "Asistente de reuniones",
+  "description": "Prepara reuniones con datos autorizados (evento del calendario, notas, prospectos, tareas e interacciones relacionadas), estructura notas en decisiones y acciones y crea las tareas de seguimiento.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "prepara la reunión con Ana de mañana",
+    "ordena estas notas de la reunión",
+    "crea las tareas de seguimiento de la reunión",
+    "haz la minuta de la reunión de hoy"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "prepare",
+          "notes",
+          "follow_up"
+        ]
+      },
+      "meeting": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "date": {
+        "type": "string",
+        "enum": [
+          "today",
+          "tomorrow",
+          "week"
+        ]
+      },
+      "attendees": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "maxItems": 20
+      },
+      "notes_text": {
+        "type": "string",
+        "maxLength": 30000
+      },
+      "create_tasks": {
+        "type": "boolean"
+      },
+      "save": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task",
+    "save_document"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [
+    "calendar.read"
+  ],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server",
+    "obsidian_vault"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; sugerencias con IA usan tokens.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 12
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin permiso de calendario → prepara igual y lo indica. Acciones sin fecha → tarea sin recordatorio.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Usa solo datos del teléfono que autorizaste (calendario, bóveda no privada, prospectos).",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "minuta",
+      "input": {
+        "action": "notes",
+        "notes_text": "Decidimos lanzar en enero. Ana debe enviar la cotización el viernes. Hay que revisar el inventario."
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

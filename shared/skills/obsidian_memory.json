@@ -1,0 +1,121 @@
+{
+  "id": "obsidian_memory",
+  "name": "Memoria de Obsidian",
+  "description": "Consulta selectiva de tu bóveda de Obsidian: revisa el índice, busca solo fragmentos relevantes (nunca notas privadas), resume y conserva el enlace a cada nota original. No escribe ni duplica datos.",
+  "category": "conocimiento",
+  "exampleUtterances": [
+    "qué dicen mis notas sobre el proyecto de café",
+    "busca en mis notas sobre exportación",
+    "resume lo que tengo en obsidian sobre clientes",
+    "busca en la bóveda sobre la reunión con Ana"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 300
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "search",
+          "summary"
+        ]
+      },
+      "max_fragments": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "index": {
+        "type": "object"
+      },
+      "fragments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "excerpt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "note",
+            "path",
+            "excerpt"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "summary": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "index",
+      "fragments",
+      "summary",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [
+    "obsidian_vault"
+  ],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; el resumen con IA usa tokens del modelo (solo fragmentos, no notas completas).",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin bóveda → requiere configuración. Índice vacío → pide reindexar. Sin resultados → lo dice; nunca inventa contenido de notas.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Notas privadas excluidas siempre. Al modelo solo van fragmentos y solo en modo resumen.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "buscar",
+      "input": {
+        "query": "café",
+        "mode": "search"
+      },
+      "expect": [
+        "completed",
+        "failed"
+      ]
+    }
+  ]
+}

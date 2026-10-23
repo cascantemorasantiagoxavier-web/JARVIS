@@ -1,0 +1,105 @@
+{
+  "id": "marketing_optimizer",
+  "name": "Optimizador de marketing",
+  "description": "Puntúa textos publicitarios (llamada a la acción, beneficios, cifras, urgencia, legibilidad), propone variantes A/B, lista de verificación de campañas y enlaces con parámetros UTM.",
+  "category": "marketing",
+  "exampleUtterances": [
+    "analiza este anuncio",
+    "dame variantes A/B de este texto publicitario",
+    "lista de verificación para una campaña en Facebook",
+    "crea un enlace con UTM para mi campaña de Instagram"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "analyze_copy",
+          "ab_variants",
+          "campaign_checklist",
+          "utm"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 5000
+      },
+      "channel": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "url": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "source": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "medium": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "campaign": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "content": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; variantes con IA usan tokens.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 45,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "URL inválida o parámetros UTM faltantes → se indican. Sin IA → variantes por reglas.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El texto solo va al servidor si se piden variantes con IA.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "utm",
+      "input": {
+        "action": "utm",
+        "url": "https://micafe.cr/promo",
+        "source": "instagram",
+        "campaign": "cafe temporada"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

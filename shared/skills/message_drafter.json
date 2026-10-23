@@ -1,0 +1,141 @@
+{
+  "id": "message_drafter",
+  "name": "Redactor de mensajes",
+  "description": "Redacta mensajes (WhatsApp, SMS, correo o genérico) según propósito y tono; los guarda como borrador y solo abre la app para enviarlos si lo pides y confirmas. Nunca envía solo.",
+  "category": "comunicación",
+  "exampleUtterances": [
+    "redacta un mensaje para confirmar la cita del jueves con Laura",
+    "escríbele un mensaje cordial a mi cliente para agradecer la compra",
+    "prepara un texto para avisar que llego tarde",
+    "ayúdame a escribir un mensaje formal de disculpa"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "purpose": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 500
+      },
+      "recipient": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "channel": {
+        "type": "string",
+        "enum": [
+          "whatsapp",
+          "sms",
+          "email",
+          "generic"
+        ]
+      },
+      "tone": {
+        "type": "string",
+        "enum": [
+          "cordial",
+          "formal",
+          "breve"
+        ]
+      },
+      "details": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "subject": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "phone": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "email": {
+        "type": "string",
+        "maxLength": 320
+      },
+      "send": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "purpose"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "channel",
+          "body"
+        ],
+        "additionalProperties": true
+      },
+      "opened": {
+        "type": "boolean"
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "draft",
+      "opened",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "compose_message",
+    "compose_email",
+    "share_text"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo con plantillas; con IA, tokens del modelo.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 45,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Abrir la app requiere confirmación; si no se confirma, queda el borrador. Falta el número/correo → se pide.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El propósito y los detalles solo van al servidor si hay IA configurada.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "borrador",
+      "input": {
+        "purpose": "confirmar la cita del jueves",
+        "recipient": "Laura",
+        "channel": "whatsapp"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "id": "import_export_research",
+  "name": "Investigación de importación y exportación",
+  "description": "Para un producto: fabricantes y proveedores, precios publicados (con fuente, sin inventar), requisitos oficiales en Costa Rica (PROCOMER, Hacienda, Salud, SFE…) y referencias arancelarias, con pasos sugeridos.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "investiga cómo importar bombillos led desde China",
+    "quiero exportar piña a Estados Unidos, qué requisitos hay",
+    "busca fabricantes y precios de bolsas biodegradables para importar",
+    "requisitos para importar cosméticos a Costa Rica"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "product": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 120
+      },
+      "direction": {
+        "type": "string",
+        "enum": [
+          "import",
+          "export"
+        ]
+      },
+      "country": {
+        "type": "string",
+        "maxLength": 60
+      },
+      "aspects": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "manufacturers",
+            "suppliers",
+            "prices",
+            "requirements",
+            "tariffs"
+          ]
+        },
+        "maxItems": 5
+      }
+    },
+    "required": [
+      "product"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "product": {
+        "type": "string"
+      },
+      "direction": {
+        "type": "string"
+      },
+      "sections": {
+        "type": "object"
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "product",
+      "direction",
+      "sections",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "web_search",
+    "fetch_page"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "optional",
+  "cost": "Hasta ~10 búsquedas y 2 lecturas; pasos con IA: tokens del modelo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 240,
+    "maxToolCalls": 14
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin fuentes oficiales → lo advierte y recomienda confirmar con la institución. Precios: solo los publicados, marcados como no cotizaciones.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo el producto y los países viajan al buscador.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "product": "bombillos LED",
+        "direction": "import"
+      },
+      "expect": [
+        "needs_configuration"
+      ]
+    }
+  ]
+}

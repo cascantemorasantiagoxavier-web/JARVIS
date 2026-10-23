@@ -1,0 +1,110 @@
+{
+  "id": "routine_automation",
+  "name": "Rutinas",
+  "description": "Rutinas configuradas y autorizadas por ti: una secuencia de habilidades con entradas fijas (p. ej. «buenos días»: resumen del día + tareas). Se ejecutan a petición; cada paso pasa por las mismas validaciones y las acciones externas piden confirmación.",
+  "category": "automatización",
+  "exampleUtterances": [
+    "ejecuta la rutina de buenos días",
+    "crea una rutina para empezar el día",
+    "qué rutinas tengo",
+    "borra la rutina 2"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "list",
+          "create",
+          "run",
+          "delete"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "routine_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "triggers": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "maxItems": 5
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "skill": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "input": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 8
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "El de las habilidades que ejecute.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 300,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable entre pasos y dentro de cada paso; los pasos ya completados se informan.",
+  "errorHandling": "Paso inexistente o con entrada inválida → se rechaza al crear. Un paso fallido no detiene los siguientes salvo cancelación o falta de confirmación.",
+  "maturity": "partial",
+  "missing": [
+    "disparadores automáticos por hora o ubicación (hoy se ejecutan a petición)"
+  ],
+  "privacy": "Las rutinas se guardan en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "listar",
+      "input": {
+        "action": "list"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

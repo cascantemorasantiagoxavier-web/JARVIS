@@ -1,0 +1,118 @@
+{
+  "id": "price_comparison",
+  "name": "Comparación de precios",
+  "description": "Busca precios publicados de un producto en tiendas en línea, extrae importe y moneda con su fuente y fecha, y compara mínimos, máximos y mediana por moneda (sin convertir monedas).",
+  "category": "compras",
+  "exampleUtterances": [
+    "compara precios de una freidora de aire",
+    "dónde está más barato el iPhone 15 en Costa Rica",
+    "busca el mejor precio de un taladro inalámbrico",
+    "cuánto cuesta una silla ergonómica en tiendas"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "product": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 200
+      },
+      "location": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "max_sources": {
+        "type": "integer",
+        "minimum": 3,
+        "maximum": 10
+      }
+    },
+    "required": [
+      "product"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "product": {
+        "type": "string"
+      },
+      "offers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "store": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "store",
+            "url",
+            "amount",
+            "currency"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "stats": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": [
+      "product",
+      "offers",
+      "stats"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "web_search",
+    "fetch_page"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "jarvis_server"
+  ],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "2 búsquedas y hasta 3 lecturas.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 120,
+    "maxToolCalls": 6
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin precios en los resultados → lo dice y sugiere un nombre más específico. Monedas distintas → se comparan por separado.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo el nombre del producto viaja al buscador.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "sin_servidor",
+      "input": {
+        "product": "freidora de aire"
+      },
+      "expect": [
+        "needs_configuration"
+      ]
+    }
+  ]
+}

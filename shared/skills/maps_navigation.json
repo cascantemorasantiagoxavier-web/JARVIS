@@ -1,0 +1,113 @@
+{
+  "id": "maps_navigation",
+  "name": "Mapas y navegación",
+  "description": "Busca lugares (Open-Meteo/GeoNames) y, solo cuando lo pides, abre el mapa o la ruta en tu app de mapas para un lugar, unas coordenadas o un negocio encontrado.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "cómo llego a Puerto Viejo",
+    "muéstrame en el mapa el parque central de Heredia",
+    "busca la ubicación de Santa Ana",
+    "llévame a la ferretería que encontraste"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "find_place",
+          "open",
+          "directions"
+        ]
+      },
+      "query": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "lat": {
+        "type": "number",
+        "minimum": -90,
+        "maximum": 90
+      },
+      "lon": {
+        "type": "number",
+        "minimum": -180,
+        "maximum": 180
+      },
+      "label": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "business_id": {
+        "type": "string",
+        "maxLength": 60
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "places": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "opened": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action",
+      "opened"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "find_place",
+    "open_map_point",
+    "open_location",
+    "get_directions"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": true,
+  "requiresExternalService": [
+    "open_meteo"
+  ],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 3
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Lugar no encontrado → sugiere usar cantón o ciudad. Varias coincidencias → usa la primera y lo dice. Sin coordenadas reales → no abre nada.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Solo se envía el nombre del lugar al geocodificador.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "coordenadas",
+      "input": {
+        "action": "open",
+        "lat": 9.9981,
+        "lon": -84.1165,
+        "label": "Heredia centro"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

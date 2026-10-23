@@ -1,0 +1,118 @@
+{
+  "id": "messaging_assistant",
+  "name": "Asistente de mensajería",
+  "description": "Plantillas de mensajes de negocio (cobro amable, confirmación de cita, seguimiento de cotización…), borradores, apertura de WhatsApp o SMS con el texto listo (con confirmación) y recordatorios para enviarlos.",
+  "category": "comunicación",
+  "exampleUtterances": [
+    "manda un recordatorio de pago por WhatsApp a Carlos",
+    "qué plantillas de mensajes tienes",
+    "recuérdame mañana enviarle el mensaje a Sofía",
+    "abre WhatsApp con un mensaje de seguimiento de cotización"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "templates",
+          "draft",
+          "open",
+          "schedule_reminder"
+        ]
+      },
+      "channel": {
+        "type": "string",
+        "enum": [
+          "whatsapp",
+          "sms"
+        ]
+      },
+      "phone": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "contact_name": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 4000
+      },
+      "template": {
+        "type": "string",
+        "enum": [
+          "recordatorio_pago",
+          "confirmacion_cita",
+          "seguimiento_cotizacion",
+          "agradecimiento",
+          "cobro_amable"
+        ]
+      },
+      "detail": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "when": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "compose_message",
+    "create_task"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "WhatsApp sin número → lo pide. Abrir la app requiere confirmación.",
+  "maturity": "partial",
+  "missing": [
+    "leer o enviar mensajes automáticamente (Android y WhatsApp no lo permiten a otras apps)"
+  ],
+  "privacy": "Nada sale del teléfono hasta que tú envías el mensaje.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "plantilla",
+      "input": {
+        "action": "draft",
+        "channel": "whatsapp",
+        "template": "recordatorio_pago",
+        "contact_name": "Carlos",
+        "detail": "de la factura 102"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

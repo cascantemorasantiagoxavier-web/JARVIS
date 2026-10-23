@@ -109,7 +109,12 @@ class SkillContext(
     private val confirmation: ConfirmationGate,
     private val permissions: PermissionGate,
     private val onProgress: (String) -> Unit,
+    private val runner: (suspend (String, JsonObject) -> SkillResult)? = null,
+    private val catalog: (String) -> SkillManifest? = { null },
 ) {
+    /** Manifiesto de otra habilidad (para validar pasos de rutinas antes de guardarlas). */
+    fun manifestOf(id: String): SkillManifest? = catalog(id)
+
     val time: TimeSource get() = services.time
     val working: WorkingContext get() = toolCtx.working
     val runs = mutableListOf<ToolRun>()
@@ -131,6 +136,13 @@ class SkillContext(
     suspend fun permission(name: String): Boolean = permissions.ensure(name)
 
     fun progress(label: String) = onProgress(label)
+
+    /** Ejecuta otra habilidad con las mismas validaciones (solo rutinas). Nunca a sí misma. */
+    suspend fun runSkill(id: String, input: JsonObject): SkillResult {
+        if (id == manifest.id) throw SkillSecurityException("Una habilidad no puede ejecutarse a sí misma.")
+        val r = runner ?: throw SkillSecurityException("Esta habilidad no puede ejecutar otras habilidades.")
+        return r(id, input)
+    }
 
     /** Modelo disponible solo si el servidor está configurado. */
     fun llm(): SkillLlm? = if (env.serverConfigured()) services.llm() else null

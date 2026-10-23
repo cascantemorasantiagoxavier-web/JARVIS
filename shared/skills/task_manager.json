@@ -1,0 +1,129 @@
+{
+  "id": "task_manager",
+  "name": "Gestor de tareas",
+  "description": "Crea, lista, completa y borra tareas con recordatorios reales (AlarmManager) y muestra los recordatorios programados. Reutiliza las herramientas de tareas: mismo almacenamiento y reglas.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "crea una tarea de pagar el agua el viernes",
+    "qué recordatorios tengo programados",
+    "marca como hecha la tarea 3",
+    "lista mis tareas pendientes"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "create",
+          "list",
+          "complete",
+          "delete",
+          "reminders"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "due": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "priority": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "remind": {
+        "type": "boolean"
+      },
+      "filter": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "today",
+          "overdue",
+          "done",
+          "all"
+        ]
+      },
+      "task_id": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "tasks": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task",
+    "list_tasks",
+    "complete_task",
+    "delete_task"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Fecha no entendida → pide un formato como «mañana a las 3 pm». Borrar pide confirmación. Sin alarmas exactas → avisa que puede retrasarse.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Tareas solo en el teléfono.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "crear",
+      "input": {
+        "action": "create",
+        "title": "Pagar el agua",
+        "due": "mañana"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

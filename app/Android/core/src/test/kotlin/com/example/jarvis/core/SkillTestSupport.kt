@@ -34,7 +34,7 @@ class FakeBackend {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path!!.substringBefore('?')
-                requests += path to request.body.readUtf8()
+                requests += path to request.body.clone().readUtf8()
                 return routes[path]?.invoke(request) ?: MockResponse().setResponseCode(404).setBody("""{"error":{"code":"not_found","message":"Ruta no encontrada."}}""")
             }
         }

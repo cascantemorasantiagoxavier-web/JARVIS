@@ -1,0 +1,90 @@
+{
+  "id": "device_diagnostics",
+  "name": "Diagnóstico del teléfono",
+  "description": "Diagnóstico con datos que Android permite leer: modelo y versión, batería, red, almacenamiento, permisos de JARVIS, notificaciones, alarmas exactas, optimización de batería y estado del servidor, con recomendaciones.",
+  "category": "asistente",
+  "exampleUtterances": [
+    "haz un diagnóstico del teléfono",
+    "revisa el estado del celular",
+    "por qué no me llegan los recordatorios",
+    "cuánto almacenamiento libre tengo"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "checks": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "battery",
+            "network",
+            "storage",
+            "permissions",
+            "notifications",
+            "alarms",
+            "server"
+          ]
+        },
+        "maxItems": 7
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "device": {
+        "type": "object"
+      },
+      "recommendations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "device",
+      "recommendations"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "get_device_status"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 30,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Datos que Android no expone → «no disponible». Servidor caído → se indica sin bloquear el resto.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "No sale del teléfono salvo la consulta de estado al servidor configurado.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "basico",
+      "input": {
+        "checks": [
+          "battery",
+          "network",
+          "storage",
+          "permissions"
+        ]
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

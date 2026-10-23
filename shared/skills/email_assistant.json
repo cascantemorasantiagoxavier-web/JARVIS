@@ -1,0 +1,135 @@
+{
+  "id": "email_assistant",
+  "name": "Asistente de correo",
+  "description": "Redacta correos, responde correos que pegues (detecta preguntas y solicitudes), mejora la redacción, clasifica por prioridad correos pegados y abre el borrador en tu app de correo con confirmación. No lee tu bandeja.",
+  "category": "comunicación",
+  "exampleUtterances": [
+    "redacta un correo para pedir una cotización de 200 sacos",
+    "ayúdame a responder este correo del banco",
+    "mejora la redacción de este correo",
+    "clasifica estos correos por prioridad"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "reply",
+          "improve",
+          "triage",
+          "open_draft"
+        ]
+      },
+      "purpose": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 5000
+      },
+      "original_email": {
+        "type": "string",
+        "maxLength": 30000
+      },
+      "body": {
+        "type": "string",
+        "maxLength": 20000
+      },
+      "subject": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "to": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 320
+        },
+        "maxItems": 10
+      },
+      "recipient_name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "tone": {
+        "type": "string",
+        "enum": [
+          "formal",
+          "cordial",
+          "breve"
+        ]
+      },
+      "emails_text": {
+        "type": "string",
+        "maxLength": 100000
+      },
+      "draft_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "open": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "compose_email"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo con plantillas; con IA, tokens del modelo.",
+  "risk": "external",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Abrir el correo pide confirmación. Sin IA → plantillas con marcadores [respuesta] para completar.",
+  "maturity": "partial",
+  "missing": [
+    "leer la bandeja de entrada (requiere OAuth de Gmail/Outlook o IMAP; no configurado)",
+    "enviar directamente (por diseño, el envío lo hace el usuario)"
+  ],
+  "privacy": "Los correos pegados solo van al servidor si se pide ayuda de la IA.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "borrador",
+      "input": {
+        "action": "draft",
+        "purpose": "solicitar una cotización de 200 sacos de café",
+        "to": [
+          "compras@ejemplo.cr"
+        ]
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}
