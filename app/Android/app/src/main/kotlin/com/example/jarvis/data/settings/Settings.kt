@@ -14,10 +14,11 @@ import com.example.jarvis.core.realtime.RealtimeSettings
 import com.example.jarvis.core.realtime.RealtimeUsage
 import com.example.jarvis.core.weather.Place
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import java.security.KeyStore
 import java.util.Base64
@@ -96,21 +97,47 @@ data class StoredUsage(val audioIn: Long = 0, val cachedAudioIn: Long = 0, val t
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "jarvis_settings")
 
+/**
+ * Ajustes en DataStore. `current` vale los valores por defecto hasta que termina la primera
+ * lectura del disco: quien decida algo al arrancar (proceso nuevo, WorkManager, receptores)
+ * debe usar `awaitLoaded()`.
+ */
 class SettingsRepository(private val context: Context, scope: CoroutineScope) {
     private val key = stringPreferencesKey("settings_json")
+    private val _settings = MutableStateFlow(AppSettings())
+    val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+    private val _loaded = MutableStateFlow(false)
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
-    val settings: StateFlow<AppSettings> = context.dataStore.data
-        .map { prefs -> prefs[key]?.let { runCatching { JarvisJson.decodeFromString(AppSettings.serializer(), it) }.getOrNull() } ?: AppSettings() }
-        .stateIn(scope, SharingStarted.Eagerly, AppSettings())
-
-    val current: AppSettings get() = settings.value
-
-    suspend fun update(transform: (AppSettings) -> AppSettings) {
-        context.dataStore.edit { prefs ->
-            val now = prefs[key]?.let { runCatching { JarvisJson.decodeFromString(AppSettings.serializer(), it) }.getOrNull() } ?: AppSettings()
-            prefs[key] = JarvisJson.encodeToString(AppSettings.serializer(), transform(now))
+    init {
+        scope.launch {
+            context.dataStore.data.collect { prefs ->
+                _settings.value = decode(prefs[key])
+                _loaded.value = true
+            }
         }
     }
+
+    val current: AppSettings get() = _settings.value
+
+    suspend fun awaitLoaded(): AppSettings {
+        _loaded.first { it }
+        return current
+    }
+
+    /** Guarda y deja el nuevo valor visible en `current` en cuanto termina (sin esperar a DataStore). */
+    suspend fun update(transform: (AppSettings) -> AppSettings): AppSettings {
+        var saved = current
+        context.dataStore.edit { prefs ->
+            saved = transform(decode(prefs[key]))
+            prefs[key] = JarvisJson.encodeToString(AppSettings.serializer(), saved)
+        }
+        _settings.value = saved
+        return saved
+    }
+
+    private fun decode(raw: String?): AppSettings =
+        raw?.let { runCatching { JarvisJson.decodeFromString(AppSettings.serializer(), it) }.getOrNull() } ?: AppSettings()
 }
 
 /**

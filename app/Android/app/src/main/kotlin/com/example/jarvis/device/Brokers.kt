@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -68,14 +69,18 @@ class ConfirmationBroker : ConfirmationGate {
     override suspend fun confirm(toolName: String, summary: String): Boolean {
         if (!ForegroundTracker.isForeground) return false
         val d = CompletableDeferred<Boolean>()
-        _pending.value = PendingConfirmation(toolName, summary, d)
-        val answer = withTimeoutOrNull(120_000) { d.await() } ?: false
-        _pending.value = null
+        val request = PendingConfirmation(toolName, summary, d)
+        // Si quedaba otra pregunta abierta, se responde "no" en vez de dejarla esperando.
+        _pending.getAndUpdate { request }?.result?.complete(false)
+        val answer = try {
+            withTimeoutOrNull(120_000) { d.await() } ?: false
+        } finally {
+            _pending.compareAndSet(request, null)
+        }
         return answer
     }
 
     fun answer(accepted: Boolean) {
-        _pending.value?.result?.complete(accepted)
-        _pending.value = null
+        _pending.getAndUpdate { null }?.result?.complete(accepted)
     }
 }

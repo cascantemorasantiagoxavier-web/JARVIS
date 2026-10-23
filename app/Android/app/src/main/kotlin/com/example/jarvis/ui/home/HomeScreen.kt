@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -24,6 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.jarvis.core.model.CoreState
 import com.example.jarvis.core.realtime.VoiceState
 import com.example.jarvis.ui.components.HudChip
@@ -69,6 +73,8 @@ fun HomeScreen(vm: HomeViewModel, onNavigate: (String) -> Unit, onLaunchError: (
     }
     val highlight = settings.weatherPlace?.let { com.example.jarvis.core.business.LatLon(it.lat, it.lon) }
     val launch: (AppTile) -> Unit = { tile -> vm.launch(tile) { err -> if (err != null) onLaunchError(err) } }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(vm, lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { vm.pollWhileVisible() } }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(hud.background).safeDrawingPadding().testTag("home")) {
         val wide = maxWidth >= 720.dp && maxWidth > maxHeight

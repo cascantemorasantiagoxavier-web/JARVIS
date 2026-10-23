@@ -16,7 +16,7 @@ class JarvisApplication : Application() {
         Notifications.createChannels(this)
         container.scope.launch {
             container.orchestrator.loadHistory()
-            if (container.settings.current.vaultUri != null) VaultIndexer.schedulePeriodic(this@JarvisApplication)
+            if (container.settings.awaitLoaded().vaultUri != null) VaultIndexer.schedulePeriodic(this@JarvisApplication)
         }
         // "end_conversation" pedido desde voz: cerrar la sesión cuando JARVIS termine de despedirse
         container.scope.launch {

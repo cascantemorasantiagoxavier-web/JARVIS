@@ -46,7 +46,7 @@ class LocalSpeech(private val context: Context, private val levels: AudioLevels)
         return tts?.voices.orEmpty().filter { it.locale.language == "es" && !it.isNetworkConnectionRequired }.sortedBy { it.name }
     }
 
-    suspend fun listenOnce(timeoutMs: Long = 12_000): ListenResult = withContext(Dispatchers.Main) {
+    suspend fun listenOnce(timeoutMs: Long = 20_000): ListenResult = withContext(Dispatchers.Main) {
         if (!recognitionAvailable) return@withContext ListenResult.Failed("Este teléfono no tiene reconocimiento de voz disponible.")
         val r = recognizer ?: SpeechRecognizer.createSpeechRecognizer(context).also { recognizer = it }
         val result = withTimeoutOrNull(timeoutMs) {
@@ -109,6 +109,8 @@ class LocalSpeech(private val context: Context, private val levels: AudioLevels)
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) { if (utteranceId == id) done.complete(false) }
             override fun onError(utteranceId: String?, errorCode: Int) { if (utteranceId == id) done.complete(false) }
+            // stop() (interrumpir) no llama a onDone: sin esto la conversación local quedaba colgada.
+            override fun onStop(utteranceId: String?, interrupted: Boolean) { if (utteranceId == id) done.complete(false) }
             override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) { levels.output(0.35f + (start % 7) / 14f) }
         })
         val clean = text.replace(Regex("[*#_`>\\[\\]]"), " ").take(3500)

@@ -96,17 +96,22 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
         }
         viewModelScope.launch { c.settings.settings.map { it.weatherPlace }.distinctUntilChanged().collect { refreshWeather() } }
         viewModelScope.launch { c.settings.settings.map { it.favoriteApps }.distinctUntilChanged().collect { loadApps(it) } }
-        viewModelScope.launch {
-            while (true) {
-                refreshStatus()
-                _nextTask.value = runCatching {
-                    (c.tasks.list(TaskFilter.OVERDUE) + c.tasks.list(TaskFilter.PENDING).filter { it.due != null }).firstOrNull()
-                }.getOrNull()
-                delay(60_000)
-            }
-        }
-        viewModelScope.launch {
-            while (true) { delay(30 * 60_000L); refreshWeather() }
+    }
+
+    private var weatherAt = 0L
+
+    /**
+     * Actualiza estado, próxima tarea y clima mientras la pantalla está visible. La pantalla lo
+     * llama con repeatOnLifecycle(STARTED): en segundo plano no hay sondeo ni tráfico de red.
+     */
+    suspend fun pollWhileVisible() {
+        while (true) {
+            updateStatus()
+            _nextTask.value = runCatching {
+                (c.tasks.list(TaskFilter.OVERDUE) + c.tasks.list(TaskFilter.PENDING).filter { it.due != null }).firstOrNull()
+            }.getOrNull()
+            if (System.currentTimeMillis() - weatherAt > 30 * 60_000L) refreshWeather()
+            delay(60_000)
         }
     }
 
@@ -125,6 +130,7 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     fun refreshWeather() {
         val place = c.settings.current.weatherPlace ?: run { _weather.value = WeatherUi.NotConfigured; return }
         _weather.value = WeatherUi.Loading
+        weatherAt = System.currentTimeMillis()
         viewModelScope.launch {
             _weather.value = try {
                 WeatherUi.Data(c.weather.current(place))
@@ -135,7 +141,11 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun refreshStatus() {
-        viewModelScope.launch {
+        viewModelScope.launch { updateStatus() }
+    }
+
+    private suspend fun updateStatus() {
+        run {
             val net = c.device.network()
             val battery = c.device.battery()?.percent
             val backend = if (!c.backendConfigured()) {

@@ -98,6 +98,11 @@ class AlarmReminderScheduler(private val context: Context) : ReminderScheduler {
 }
 
 class ReminderReceiver : BroadcastReceiver() {
+    companion object {
+        /** Etiqueta propia: el id de la tarea no puede pisar otras notificaciones de la app. */
+        const val TAG = "reminder"
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getLongExtra(AlarmReminderScheduler.EXTRA_ID, -1)
         val title = intent.getStringExtra(AlarmReminderScheduler.EXTRA_TITLE) ?: "Tienes un recordatorio"
@@ -105,7 +110,10 @@ class ReminderReceiver : BroadcastReceiver() {
         if (!Notifications.canPost(context)) return
         Notifications.createChannels(context)
         val open = PendingIntent.getActivity(
-            context, id.toInt(), Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_ROUTE, "tasks"),
+            context, id.toInt(),
+            Intent(context, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_ROUTE, "tasks")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val n = NotificationCompat.Builder(context, Notifications.CHANNEL_REMINDERS)
@@ -119,7 +127,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
         try {
-            NotificationManagerCompat.from(context).notify(id.toInt(), n)
+            NotificationManagerCompat.from(context).notify(TAG, id.toInt(), n)
         } catch (e: SecurityException) {
             // Permiso de notificaciones revocado entre la comprobación y el aviso.
         }

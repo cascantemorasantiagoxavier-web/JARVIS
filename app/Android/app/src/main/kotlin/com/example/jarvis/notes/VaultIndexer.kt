@@ -106,7 +106,8 @@ class VaultIndexer(
 class VaultIndexWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as? JarvisApplication ?: return Result.failure()
-        val uri = app.container.settings.current.vaultUri?.let(Uri::parse) ?: return Result.success()
+        // Proceso recién creado por WorkManager: hay que esperar a leer los ajustes del disco.
+        val uri = app.container.settings.awaitLoaded().vaultUri?.let(Uri::parse) ?: return Result.success()
         if (!app.container.vaultIndexer.hasAccess(uri)) return Result.failure()
         return runCatching { app.container.vaultIndexer.index(uri) }.fold({ Result.success() }, { Result.retry() })
     }

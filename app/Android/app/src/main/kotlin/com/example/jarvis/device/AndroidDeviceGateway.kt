@@ -16,9 +16,11 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
+import android.os.CancellationSignal
 import android.provider.CalendarContract
 import android.provider.MediaStore
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.example.jarvis.R
 import com.example.jarvis.core.business.LatLon
@@ -33,11 +35,14 @@ import com.example.jarvis.core.device.NetworkInfo
 import com.example.jarvis.core.device.SpecialApp
 import com.example.jarvis.reminders.Notifications
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URLEncoder
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.coroutines.resume
 
 /**
  * Implementación Android de las acciones del dispositivo. Todas usan intents públicos que el
@@ -166,7 +171,26 @@ class AndroidDeviceGateway(private val context: Context, private val permissions
         val best: Location? = withContext(Dispatchers.IO) {
             lm.getProviders(true).mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
         }
-        return best?.let { LatLon(it.latitude, it.longitude) }
+        // Una posición de hace horas no sirve para "cerca de mí": se pide una nueva (máx. 10 s).
+        val recent = best?.takeIf { System.currentTimeMillis() - it.time < 30 * 60_000L }
+        val fix = recent ?: (if (Build.VERSION.SDK_INT >= 30) currentFix(lm) else null) ?: best
+        return fix?.let { LatLon(it.latitude, it.longitude) }
+    }
+
+    @RequiresApi(30)
+    @SuppressLint("MissingPermission")
+    private suspend fun currentFix(lm: LocationManager): Location? {
+        val provider = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER)
+            .firstOrNull { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) } ?: return null
+        return withTimeoutOrNull(10_000) {
+            suspendCancellableCoroutine { cont ->
+                val signal = CancellationSignal()
+                cont.invokeOnCancellation { signal.cancel() }
+                runCatching {
+                    lm.getCurrentLocation(provider, signal, context.mainExecutor) { loc -> if (cont.isActive) cont.resume(loc) }
+                }.onFailure { if (cont.isActive) cont.resume(null) }
+            }
+        }
     }
 
     /**

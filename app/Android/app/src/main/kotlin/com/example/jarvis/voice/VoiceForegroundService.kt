@@ -31,6 +31,7 @@ class VoiceForegroundService : Service() {
         val voice = (application as JarvisApplication).container.voice
         if (intent?.action == ACTION_STOP) {
             voice.stopEverythingFromNotification()
+            NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -42,16 +43,20 @@ class VoiceForegroundService : Service() {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
         } catch (e: Exception) {
             // ForegroundServiceStartNotAllowedException (Android 12+) o SecurityException (Android 14+)
+            running = false
+            NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
             voice.onServiceFailed(e.message)
             stopSelf()
             return START_NOT_STICKY
         }
+        running = true
         voice.onServiceRunning()
         // No se reinicia solo: Android 14 no permite reabrir el micrófono desde segundo plano.
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        running = false
         (application as JarvisApplication).container.voice.onServiceStopped()
         super.onDestroy()
     }
@@ -66,7 +71,12 @@ class VoiceForegroundService : Service() {
             runCatching { ContextCompat.startForegroundService(context, i) }
         }
 
+        /** true solo mientras el servicio está en primer plano (evita notificaciones huérfanas). */
+        @Volatile var running = false
+            private set
+
         fun update(context: Context, mode: Mode) {
+            if (!running) return
             if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled()) return
             runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, build(context, mode)) }
         }

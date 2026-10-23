@@ -80,6 +80,10 @@ fun MapScreen(c: AppContainer, ids: List<String>, showProspects: Boolean, action
     remember {
         Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", 0))
         Configuration.getInstance().setUserAgentValue("JARVIS-Assistant/${BuildConfig.VERSION_NAME} (${BuildConfig.APPLICATION_ID})")
+        // Caché de teselas en el almacenamiento privado de la app (sin permisos de almacenamiento).
+        val base = java.io.File(context.cacheDir, "osmdroid")
+        Configuration.getInstance().setOsmdroidBasePath(base)
+        Configuration.getInstance().setOsmdroidTileCache(java.io.File(base, "tiles"))
         true
     }
     val mapView = remember {

@@ -66,14 +66,19 @@ class VoiceManager(
     }.stateIn(scope, SharingStarted.Eagerly, VoiceState.OFF)
 
     private var wakeEngine: WakeWordEngine? = null
+    private var engineSensitivity = Float.NaN
     private var localJob: Job? = null
-    private var serviceRunning = false
+    @Volatile private var serviceRunning = false
 
     val wakeAvailability: WakeAvailability
         get() = engine().let { WakeAvailability(it.isAvailable, it.unavailableReason) }
 
-    private fun engine(): WakeWordEngine =
-        wakeEngine ?: WakeWordEngineFactory.create(context, settings.current.wakeSensitivity).also { wakeEngine = it }
+    /** Motor de palabra clave; se recrea si cambió la sensibilidad y no está escuchando. */
+    private fun engine(): WakeWordEngine {
+        val sensitivity = settings.current.wakeSensitivity
+        wakeEngine?.let { e -> if (sensitivity == engineSensitivity || _wakeListening.value) return e else e.stop() }
+        return WakeWordEngineFactory.create(context, sensitivity).also { wakeEngine = it; engineSensitivity = sensitivity }
+    }
 
     val conversationActive: Boolean get() = realtime.isActive || localJob?.isActive == true
 
@@ -167,6 +172,19 @@ class VoiceManager(
             _wakeListening.value = false
             if (!conversationActive) VoiceForegroundService.stop(context)
         }
+    }
+
+    /**
+     * Al abrir la app: si el usuario dejó activada la palabra clave (p. ej. tras reiniciar el
+     * teléfono), se reanuda. Android solo permite abrir el micrófono en segundo plano si el
+     * servicio arrancó con la app visible, por eso se llama desde MainActivity.onStart.
+     */
+    suspend fun restoreWakeWord() {
+        val s = settings.awaitLoaded()
+        if (!s.wakeWordEnabled || serviceRunning || conversationActive) return
+        if (!engine().isAvailable || !permissions.isGranted(Manifest.permission.RECORD_AUDIO)) return
+        ensureService()
+        startWakeListening()
     }
 
     private fun startWakeListening() {

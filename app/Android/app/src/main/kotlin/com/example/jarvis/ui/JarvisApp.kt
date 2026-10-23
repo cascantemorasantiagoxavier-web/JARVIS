@@ -35,6 +35,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.jarvis.AppContainer
+import com.example.jarvis.RouteRequest
 import com.example.jarvis.core.business.Business
 import com.example.jarvis.core.business.FieldValue
 import com.example.jarvis.core.model.UiEvent
@@ -56,8 +57,9 @@ import com.example.jarvis.ui.web.WebSearchScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun JarvisApp(c: AppContainer, startRoute: String?) {
+fun JarvisApp(c: AppContainer, routeRequest: RouteRequest?) {
     val settings by c.settings.settings.collectAsState()
+    val settingsLoaded by c.settings.loaded.collectAsState()
     JarvisTheme(settings.accent) {
         val hud = LocalHud.current
         val nav = rememberNavController()
@@ -76,7 +78,10 @@ fun JarvisApp(c: AppContainer, startRoute: String?) {
             c.uiEvents.collect { e -> if (e is UiEvent.ShowMap) nav.navigate("map?ids=" + Uri.encode(e.businessIds.joinToString(","))) }
         }
         LaunchedEffect(Unit) { c.voice.notices.collect { notify(it) } }
-        LaunchedEffect(startRoute) { if (!startRoute.isNullOrBlank() && startRoute != "home") nav.navigate(startRoute) }
+        LaunchedEffect(routeRequest) {
+            val route = routeRequest?.route ?: return@LaunchedEffect
+            if (route == "home") nav.popBackStack("home", inclusive = false) else nav.navigate(route) { launchSingleTop = true }
+        }
 
         Box(Modifier.fillMaxSize().background(hud.background)) {
             NavHost(nav, startDestination = "home") {
@@ -131,7 +136,8 @@ fun JarvisApp(c: AppContainer, startRoute: String?) {
 
         detailsFor?.let { b -> BusinessDetailsDialog(b, onOpen = actions::openUrl, onDismiss = { detailsFor = null }) }
 
-        if (!settings.onboardingDone && !c.backendConfigured()) {
+        // Solo tras leer los ajustes del disco: si no, la bienvenida parpadearía a quien ya configuró todo.
+        if (settingsLoaded && !settings.onboardingDone && !c.backendConfigured()) {
             AlertDialog(
                 onDismissRequest = { scope.launch { c.settings.update { it.copy(onboardingDone = true) } } },
                 title = { Text("Bienvenido, jefe") },
