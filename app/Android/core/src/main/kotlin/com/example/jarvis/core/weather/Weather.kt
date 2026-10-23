@@ -27,6 +27,10 @@ data class WeatherNow(
     val kind: WeatherKind get() = WeatherCodes.kind(weatherCode)
 }
 
+data class DailyForecast(val date: String, val code: Int?, val maxC: Double?, val minC: Double?, val rainProbability: Int?) {
+    val description: String get() = code?.let { WeatherCodes.describe(it) } ?: "sin dato"
+}
+
 enum class WeatherKind { CLEAR, PARTLY_CLOUDY, CLOUDY, FOG, DRIZZLE, RAIN, STORM, SNOW }
 
 /** Códigos WMO usados por Open-Meteo. */
@@ -77,7 +81,14 @@ class WeatherClient(
 ) {
     @Serializable private data class GeoResults(val results: List<GeoItem> = emptyList())
     @Serializable private data class GeoItem(val name: String, val latitude: Double, val longitude: Double, val admin1: String? = null, val admin2: String? = null, val country: String? = null)
-    @Serializable private data class Forecast(val current: Current? = null)
+    @Serializable private data class Forecast(val current: Current? = null, val daily: Daily? = null)
+    @Serializable private data class Daily(
+        val time: List<String> = emptyList(),
+        val weather_code: List<Int?> = emptyList(),
+        val temperature_2m_max: List<Double?> = emptyList(),
+        val temperature_2m_min: List<Double?> = emptyList(),
+        val precipitation_probability_max: List<Int?> = emptyList(),
+    )
     @Serializable private data class Current(val time: String, val temperature_2m: Double, val weather_code: Int, val is_day: Int = 1)
 
     suspend fun geocode(name: String, countryCode: String? = "CR"): List<Place> {
@@ -104,6 +115,28 @@ class WeatherClient(
         val f = JarvisJson.decodeFromString(Forecast.serializer(), get(url.toString()))
         val c = f.current ?: throw WeatherException("Open-Meteo no devolvió datos actuales.")
         return WeatherNow(place, c.temperature_2m, c.weather_code, c.is_day == 1, c.time)
+    }
+
+    /** Pronóstico diario (máx. 16 días) de Open-Meteo para planificar viajes o el día. */
+    suspend fun daily(place: Place, days: Int): List<DailyForecast> {
+        val url = forecastUrl.toHttpUrl().newBuilder()
+            .addQueryParameter("latitude", place.lat.toString())
+            .addQueryParameter("longitude", place.lon.toString())
+            .addQueryParameter("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max")
+            .addQueryParameter("forecast_days", days.coerceIn(1, 16).toString())
+            .addQueryParameter("timezone", "auto")
+            .build()
+        val d = JarvisJson.decodeFromString(Forecast.serializer(), get(url.toString())).daily
+            ?: throw WeatherException("Open-Meteo no devolvió pronóstico diario.")
+        return d.time.indices.map { i ->
+            DailyForecast(
+                date = d.time[i],
+                code = d.weather_code.getOrNull(i),
+                maxC = d.temperature_2m_max.getOrNull(i),
+                minC = d.temperature_2m_min.getOrNull(i),
+                rainProbability = d.precipitation_probability_max.getOrNull(i),
+            )
+        }
     }
 
     private suspend fun get(url: String): String {

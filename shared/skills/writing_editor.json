@@ -1,0 +1,155 @@
+{
+  "id": "writing_editor",
+  "name": "Editor de textos",
+  "description": "Revisa y mejora textos en español: corrige espacios, mayúsculas, signos de apertura (¿¡) y errores frecuentes, mide la legibilidad (Fernández-Huerta), señala frases largas y repeticiones y, con el servidor, reescribe según el objetivo (claridad, formal, breve…).",
+  "category": "productividad",
+  "exampleUtterances": [
+    "corrige este texto: hola como estas, nos vemos mañana",
+    "mejora la redacción de este párrafo",
+    "revisa la ortografía de este correo",
+    "hazme este texto más formal"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20000
+      },
+      "goal": {
+        "type": "string",
+        "enum": [
+          "corregir",
+          "claridad",
+          "formal",
+          "informal",
+          "breve",
+          "persuasivo"
+        ]
+      },
+      "audience": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "save_as": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "stats": {
+        "type": "object",
+        "properties": {
+          "words": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sentences": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "avg_sentence_words": {
+            "type": "number",
+            "minimum": 0
+          },
+          "readability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "readability_label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "words",
+          "sentences"
+        ],
+        "additionalProperties": true
+      },
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "excerpt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "message"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "corrected_text": {
+        "type": "string"
+      },
+      "rewritten_text": {
+        "type": "string"
+      },
+      "used_model": {
+        "type": "boolean"
+      },
+      "file": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "stats",
+      "issues",
+      "corrected_text",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "save_document"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo sin IA. Con reescritura por IA: tokens de texto del modelo del servidor (centavos de dólar por texto).",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin servidor o si el modelo falla, entrega igualmente la corrección automática y las observaciones, e indica que la reescritura con IA no está disponible.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El texto solo se envía al servidor si hay servidor configurado y se pidió reescritura (goal distinto de corregir).",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "correccion_local",
+      "input": {
+        "text": "hola como estas?  nos vemos mañana. el proyecto va bien!"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

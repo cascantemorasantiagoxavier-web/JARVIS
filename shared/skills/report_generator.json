@@ -1,0 +1,142 @@
+{
+  "id": "report_generator",
+  "name": "Generador de informes",
+  "description": "Genera informes en Markdown, CSV o HTML a partir de los datos del teléfono: tareas, prospectos, gastos e ingresos, inventario o interacciones con clientes, o de filas que entregues. Los guarda en Descargas/JARVIS.",
+  "category": "productividad",
+  "exampleUtterances": [
+    "genera un informe de mis tareas de esta semana",
+    "hazme un reporte de prospectos en csv",
+    "crea un informe de gastos del mes",
+    "exporta el inventario a un documento"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string",
+        "enum": [
+          "tasks",
+          "prospects",
+          "finance",
+          "inventory",
+          "crm",
+          "custom"
+        ]
+      },
+      "period": {
+        "type": "string",
+        "enum": [
+          "week",
+          "month",
+          "all"
+        ]
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "markdown",
+          "csv",
+          "html"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "rows": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        },
+        "maxItems": 2000
+      },
+      "save": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "topic"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string"
+      },
+      "sections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string"
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "heading",
+            "lines"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "file": {
+        "type": "object"
+      },
+      "preview": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "format",
+      "sections",
+      "preview"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "save_document"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 1
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin datos para el tema → informe con la sección vacía explicada. Si no se puede guardar, devuelve el contenido igualmente.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Se genera en el teléfono; nada se envía fuera. El archivo queda en Descargas/JARVIS.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "tareas_markdown",
+      "input": {
+        "topic": "tasks",
+        "format": "markdown",
+        "save": false
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

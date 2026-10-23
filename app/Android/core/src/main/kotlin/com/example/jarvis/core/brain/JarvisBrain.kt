@@ -12,6 +12,7 @@ import com.example.jarvis.core.model.ResultCard
 import com.example.jarvis.core.model.Role
 import com.example.jarvis.core.model.ToolRun
 import com.example.jarvis.core.net.BackendException
+import com.example.jarvis.core.skills.SkillRouter
 import com.example.jarvis.core.tools.ToolCall
 import com.example.jarvis.core.tools.ToolContext
 import com.example.jarvis.core.tools.ToolExecutor
@@ -48,6 +49,8 @@ class JarvisBrain(
     private val context: ContextRetriever,
     private val persona: Persona,
     private val time: TimeSource,
+    /** Ruta local de habilidades cuando no hay modelo disponible (null = desactivada). */
+    private val skillRouter: SkillRouter? = null,
 ) {
     private val callIds = AtomicLong(1)
 
@@ -68,13 +71,13 @@ class JarvisBrain(
         }
 
         val client = llm()
-        if (client == null) return fallback(intent, ctx, progress, mode, "El modelo de lenguaje no está configurado.")
+        if (client == null) return fallback(intent, request, ctx, progress, mode, "El modelo de lenguaje no está configurado.")
         return try {
             runModel(client, request, ctx, progress, mode, policy)
         } catch (e: CancellationException) {
             throw e
         } catch (e: BackendException) {
-            fallback(intent, ctx, progress, mode, e.userMessage)
+            fallback(intent, request, ctx, progress, mode, e.userMessage)
         }
     }
 
@@ -91,7 +94,7 @@ class JarvisBrain(
         )
     }
 
-    private suspend fun fallback(intent: Intent?, ctx: ToolContext, progress: (BrainProgress) -> Unit, mode: AssistantMode, reason: String): JarvisResponse {
+    private suspend fun fallback(intent: Intent?, request: JarvisRequest, ctx: ToolContext, progress: (BrainProgress) -> Unit, mode: AssistantMode, reason: String): JarvisResponse {
         val tool = when (intent) {
             is Intent.Tool -> intent
             is Intent.NeedsModel -> intent.fallback
@@ -101,6 +104,18 @@ class JarvisBrain(
             val r = runDirect(tool, ctx, progress, mode)
             val note = if (intent is Intent.NeedsModel) "\n\n(Sin análisis del modelo: $reason Te muestro los datos obtenidos directamente.)" else ""
             return r.copy(text = r.text + note)
+        }
+        skillRouter?.let { router ->
+            val routed = router.route(request.text) ?: return@let
+            progress(BrainProgress.ExecutingTool("run_skill"))
+            val r = router.run(routed, ctx)
+            progress(BrainProgress.ToolFinished("run_skill", r.ok))
+            val text = r.summary + (r.warnings.takeIf { it.isNotEmpty() }?.joinToString(" ", prefix = "\n\n") ?: "") + (r.recovery?.takeIf { !r.ok }?.let { "\n\n$it" } ?: "")
+            return JarvisResponse(
+                text = text, cards = r.cards,
+                toolRuns = listOf(ToolRun("skill:${r.skillId}", r.ok, r.summary, r.durationMs, r.errorCode)) + r.toolRuns,
+                mode = mode, usedModel = false, isError = !r.ok,
+            )
         }
         return JarvisResponse(
             text = "No puedo responder eso ahora: $reason Sin el modelo sigo pudiendo darte la hora, hacer cálculos y conversiones, " +

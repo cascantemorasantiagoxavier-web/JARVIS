@@ -7,7 +7,12 @@ import com.example.jarvis.core.device.ActionResult
 import com.example.jarvis.core.device.BatteryInfo
 import com.example.jarvis.core.device.CalendarEvent
 import com.example.jarvis.core.device.CalendarRead
+import com.example.jarvis.core.device.DeviceDiagnostics
 import com.example.jarvis.core.device.DeviceGateway
+import com.example.jarvis.core.device.MediaGateway
+import com.example.jarvis.core.device.MediaResult
+import com.example.jarvis.core.device.MessageChannel
+import com.example.jarvis.core.device.SaveResult
 import com.example.jarvis.core.device.DeviceInfo
 import com.example.jarvis.core.device.InstalledApp
 import com.example.jarvis.core.device.NetworkInfo
@@ -162,4 +167,30 @@ class FakeDevice : DeviceGateway {
     override suspend fun insertCalendarEvent(title: String, start: LocalDateTime, end: LocalDateTime?, location: String?): ActionResult { actions += "calendar:$title@$start"; return ActionResult.Done("") }
     override suspend fun calendarEvents(from: LocalDateTime, to: LocalDateTime): CalendarRead =
         if (calendarAllowed) CalendarRead.Events(events.filter { !it.start.isBefore(from) && !it.start.isAfter(to) }) else CalendarRead.PermissionMissing
+    var lastEmail: Triple<List<String>, String?, String>? = null
+    var lastMessage: Triple<MessageChannel, String?, String>? = null
+    val documents = linkedMapOf<String, String>()
+    override suspend fun composeEmail(to: List<String>, subject: String?, body: String): ActionResult { actions += "email:${to.joinToString()}"; lastEmail = Triple(to, subject, body); return ActionResult.Done("") }
+    override suspend fun composeMessage(channel: MessageChannel, phone: String?, text: String): ActionResult { actions += "message:$channel:$phone"; lastMessage = Triple(channel, phone, text); return ActionResult.Done("") }
+    override suspend fun saveDocument(fileName: String, mimeType: String, content: ByteArray): SaveResult {
+        actions += "save:$fileName"
+        documents[fileName] = String(content, Charsets.UTF_8)
+        return SaveResult.Saved("content://test/$fileName", "Descargas/JARVIS")
+    }
+    override suspend fun openDocument(uri: String): ActionResult { actions += "open-doc:$uri"; return ActionResult.Done("") }
+    override suspend fun diagnostics() = DeviceDiagnostics(
+        storageFreeMb = 12_000, storageTotalMb = 64_000, notificationsEnabled = true, exactAlarmsAllowed = false,
+        batteryOptimizationIgnored = false, permissions = mapOf("micrófono" to true, "calendario" to calendarAllowed, "ubicación" to false),
+        locale = "es-CR", timeZone = "America/Costa_Rica",
+    )
+}
+
+/** Medios entregados por el "usuario" en pruebas: archivos, fotos y audio preparados. */
+class FakeMedia : MediaGateway {
+    var document: MediaResult = MediaResult.Cancelled
+    var photo: MediaResult = MediaResult.Cancelled
+    var audio: MediaResult = MediaResult.Cancelled
+    override suspend fun pickDocument(mimeTypes: List<String>) = document
+    override suspend fun capturePhoto() = photo
+    override suspend fun recordAudio(maxSeconds: Int) = audio
 }

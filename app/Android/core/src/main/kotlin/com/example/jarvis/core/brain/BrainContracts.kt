@@ -83,6 +83,8 @@ object ToolLabels {
         "open_app" -> "ABRIENDO APLICACIÓN"
         "call_phone" -> "PREPARANDO LLAMADA"
         "get_device_status" -> "DIAGNÓSTICO DEL SISTEMA"
+        "run_skill" -> "EJECUTANDO HABILIDAD"
+        "list_skills", "describe_skill" -> "CONSULTANDO HABILIDADES"
         else -> "EJECUTANDO ${tool.uppercase()}"
     }
 }

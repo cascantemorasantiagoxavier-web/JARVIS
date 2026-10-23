@@ -149,3 +149,22 @@ data class ApiErrorBody(val error: ApiError? = null)
 
 @Serializable
 data class ApiError(val code: String = "unknown", val message: String = "")
+
+@Serializable
+data class VisionRequest(val imageBase64: String, val mimeType: String, val task: String, val question: String? = null)
+
+/** Resultado de visión: texto libre y, en extracción, campos con el valor tal como aparece en la imagen. */
+@Serializable
+data class VisionResponse(
+    val task: String,
+    val text: String = "",
+    val fields: Map<String, String?> = emptyMap(),
+    val model: String? = null,
+    val retrievedAt: String? = null,
+)
+
+@Serializable
+data class TranscribeRequest(val audioBase64: String, val mimeType: String, val language: String? = null)
+
+@Serializable
+data class TranscribeResponse(val text: String, val language: String? = null, val model: String? = null)

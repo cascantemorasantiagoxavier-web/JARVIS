@@ -71,6 +71,12 @@ class BackendClient(
     suspend fun fetchPage(req: WebFetchRequest): PageContent =
         post("/api/web/fetch", req, WebFetchRequest.serializer(), PageContent.serializer())
 
+    suspend fun vision(req: VisionRequest): VisionResponse =
+        post("/api/vision/analyze", req, VisionRequest.serializer(), VisionResponse.serializer())
+
+    suspend fun transcribe(req: TranscribeRequest): TranscribeResponse =
+        post("/api/audio/transcribe", req, TranscribeRequest.serializer(), TranscribeResponse.serializer())
+
     suspend fun businessSearch(req: BusinessSearchRequest): BusinessSearchResult =
         post("/api/business/search", req, BusinessSearchRequest.serializer(), BusinessSearchResult.serializer())
 

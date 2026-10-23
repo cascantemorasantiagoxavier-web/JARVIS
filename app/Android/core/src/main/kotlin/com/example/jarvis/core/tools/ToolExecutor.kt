@@ -1,10 +1,13 @@
 package com.example.jarvis.core.tools
 
+import com.example.jarvis.core.model.RequestSource
 import com.example.jarvis.core.net.BackendException
 import com.example.jarvis.core.util.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /** Comprueba (y si procede solicita) permisos de Android como "calendar.read". */
 fun interface PermissionGate {
@@ -76,11 +79,11 @@ class ToolExecutor(
                 return ToolResult.error("permission_denied", "Falta el permiso necesario ($p). Puedes concederlo en Ajustes.")
             }
         }
-        if (def.requiresConfirmation) {
-            val ok = confirmation.confirm(def.name, describeForConfirmation(def, args.toString()))
+        if (needsConfirmation(def, ctx)) {
+            val ok = confirmation.confirm(def.name, describeForConfirmation(def, args, ctx))
             if (!ok) return ToolResult.error("not_confirmed", "Acción cancelada: no fue confirmada por el usuario.")
         }
-        val timeout = if (def.site == ToolSite.BACKEND) backendTimeoutMs else deviceTimeoutMs
+        val timeout = def.timeoutMs ?: if (def.site == ToolSite.BACKEND) backendTimeoutMs else deviceTimeoutMs
         return try {
             withTimeout(timeout) { handler.execute(args, ctx) }
         } catch (e: TimeoutCancellationException) {
@@ -94,6 +97,24 @@ class ToolExecutor(
         }
     }
 
-    private fun describeForConfirmation(def: ToolDefinition, args: String): String =
-        "${def.description.substringBefore('.')} — $args"
+    private fun describeForConfirmation(def: ToolDefinition, args: JsonObject, ctx: ToolContext): String {
+        // Los contenidos grandes (imágenes, audio, documentos) no se muestran en el diálogo.
+        val shown = JsonObject(args.mapValues { (_, v) -> if (v.toString().length > 400) JsonPrimitive("(${v.toString().length} caracteres)") else v })
+        val via = ctx.viaSkill?.let { " (habilidad $it)" }.orEmpty()
+        return "${def.description.substringBefore('.')}$via — $shown"
+    }
+
+    companion object {
+        /**
+         * Política de confirmación por riesgo:
+         *  - SENSITIVE o `confirm: true`: siempre.
+         *  - EXTERNAL: siempre, salvo que el usuario haya tocado directamente ese botón (BUTTON sin habilidad).
+         *  - READ y LOCAL_WRITE: no (las habilidades pueden pedirla para borrados propios).
+         */
+        fun needsConfirmation(def: ToolDefinition, ctx: ToolContext): Boolean = when {
+            def.requiresConfirmation || def.risk == RiskLevel.SENSITIVE -> true
+            def.risk == RiskLevel.EXTERNAL -> !(ctx.source == RequestSource.BUTTON && ctx.viaSkill == null)
+            else -> false
+        }
+    }
 }

@@ -1,0 +1,129 @@
+{
+  "id": "spreadsheet_analyst",
+  "name": "Analista de hojas de cálculo",
+  "description": "Analiza archivos CSV, TSV o XLSX: filas, columnas, tipos, vacíos, duplicados, sumas, promedios, medianas, valores más frecuentes y totales agrupados. Con el servidor puede responder preguntas sobre el resumen.",
+  "category": "productividad",
+  "exampleUtterances": [
+    "analiza esta hoja de cálculo",
+    "resume este archivo csv de ventas",
+    "suma la columna monto agrupada por categoría",
+    "cuántas filas tiene el excel"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "enum": [
+          "file",
+          "text"
+        ]
+      },
+      "csv_text": {
+        "type": "string",
+        "maxLength": 2000000
+      },
+      "group_by": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "sum_column": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "question": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "required": [
+      "source"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "file_name": {
+        "type": "string"
+      },
+      "rows": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "columns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "type"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "duplicates": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "groups": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "answer": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "rows",
+      "columns",
+      "duplicates"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo. Preguntas con IA: tokens del modelo (solo se envía el resumen, no el archivo).",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Archivo no soportado, vacío o dañado → mensaje claro con los formatos aceptados. Columna de agrupación inexistente → se listan las columnas disponibles.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El archivo se procesa en el teléfono. Para responder preguntas solo se envía al servidor el resumen estadístico.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "csv_basico",
+      "input": {
+        "source": "text",
+        "csv_text": "fecha,categoria,monto\n2025-09-01,comida,5000\n2025-09-02,transporte,2500\n2025-09-03,comida,3000",
+        "group_by": "categoria",
+        "sum_column": "monto"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "id": "stock_control",
+  "name": "Control de inventario del negocio",
+  "description": "Inventario local del negocio: altas de productos, entradas y salidas con motivo, existencias bajas respecto al mínimo, valor del inventario por moneda y búsqueda por nombre o código de barras.",
+  "category": "negocio",
+  "exampleUtterances": [
+    "agrega 20 unidades de café molido al inventario",
+    "registra una venta de 3 cajas de té",
+    "qué productos están por agotarse",
+    "cuánto vale mi inventario"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "add_item",
+          "record_movement",
+          "list",
+          "low_stock",
+          "value",
+          "find",
+          "delete_item"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "item_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "quantity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000.0
+      },
+      "unit": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "min_quantity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000.0
+      },
+      "unit_cost": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "delta": {
+        "type": "number",
+        "minimum": -1000000000.0,
+        "maximum": 1000000000.0
+      },
+      "reason": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "barcode": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "query": {
+        "type": "string",
+        "maxLength": 120
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "quantity": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "item": {
+        "type": "object"
+      },
+      "movement": {
+        "type": "object"
+      },
+      "totals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "currency": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "currency",
+            "value"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Producto inexistente → sugiere coincidencias. Salida mayor que la existencia → se rechaza sin modificar nada. Borrar exige confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Datos solo en el teléfono.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "alta",
+      "input": {
+        "action": "add_item",
+        "name": "Café molido 500 g",
+        "quantity": 20,
+        "unit": "bolsas",
+        "min_quantity": 5,
+        "unit_cost": 3500,
+        "currency": "CRC"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

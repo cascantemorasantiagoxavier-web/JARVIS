@@ -1,0 +1,124 @@
+{
+  "id": "development_copilot",
+  "name": "Copiloto de programación",
+  "description": "Ayuda con código: detecta el lenguaje, cuenta líneas y señala problemas evidentes (secretos en el código, TODO, funciones muy largas) y, con el servidor, explica, revisa o propone código. Nunca ejecuta código.",
+  "category": "productividad",
+  "exampleUtterances": [
+    "explícame este código",
+    "revisa esta función de kotlin",
+    "hay algún secreto expuesto en este código",
+    "propón cómo mejorar este script de python"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60000
+      },
+      "task": {
+        "type": "string",
+        "enum": [
+          "explain",
+          "review",
+          "improve",
+          "scan"
+        ]
+      },
+      "language": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "question": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "required": [
+      "code"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "language": {
+        "type": "string"
+      },
+      "lines": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "message"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "answer": {
+        "type": "string"
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "language",
+      "lines",
+      "findings",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Escaneo local sin costo. Explicación/revisión con IA: tokens del modelo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Sin servidor → solo el análisis local, indicando que la explicación requiere el modelo. El código nunca se ejecuta.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Si el código contiene posibles secretos, no se envía al servidor y se avisa.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "escaneo_secretos",
+      "input": {
+        "code": "val apiKey = \"sk-test-1234567890abcdefghijklmnop\"\nfun main() {\n  // TODO: borrar\n  println(apiKey)\n}",
+        "task": "scan"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

@@ -20,7 +20,11 @@ class ToolContext(
     val source: RequestSource,
     val ui: UiEventSink,
     val working: WorkingContext,
-)
+    /** Habilidad que hace la llamada (null = la pide el modelo, un botón o el detector local). */
+    val viaSkill: String? = null,
+) {
+    fun forSkill(skillId: String) = ToolContext(source, ui, working, viaSkill = skillId)
+}
 
 /** Resultado estructurado de una herramienta. `message` es un resumen en español apto para el usuario. */
 data class ToolResult(
@@ -69,9 +73,11 @@ class ToolRegistry(definitions: List<ToolDefinition>) {
     fun definition(name: String): ToolDefinition? = defs[name]
     fun handler(name: String): ToolHandler? = handlers[name]
 
-    /** Herramientas que se ofrecen al modelo; las solo-voz no se ofrecen en el chat de texto. */
+    /** Herramientas que se ofrecen al modelo: sin las internas y, en texto, sin las solo-voz. */
     fun definitionsFor(voice: Boolean): List<ToolDefinition> =
-        defs.values.filter { it.name in handlers && (voice || !it.voiceOnly) }
+        defs.values.filter { it.name in handlers && it.exposed && (voice || !it.voiceOnly) }
+
+    fun all(): List<ToolDefinition> = defs.values.toList()
 
     fun missingHandlers(): List<String> = defs.keys.filter { it !in handlers }
 

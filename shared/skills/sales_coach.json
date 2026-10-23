@@ -1,0 +1,135 @@
+{
+  "id": "sales_coach",
+  "name": "Entrenador de ventas",
+  "description": "Revisa tu embudo de prospectos (estados, prospectos estancados, sin próxima acción), da retroalimentación sobre tu discurso de venta, entrena respuestas a objeciones frecuentes y propone seguimientos (opcionalmente como tareas).",
+  "category": "negocio",
+  "exampleUtterances": [
+    "revisa mi embudo de ventas",
+    "cómo respondo a un cliente que dice que está muy caro",
+    "dame retroalimentación de mi discurso de venta",
+    "qué prospectos necesitan seguimiento"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "pipeline_review",
+          "pitch_feedback",
+          "objection_practice",
+          "follow_up_plan"
+        ]
+      },
+      "pitch_text": {
+        "type": "string",
+        "maxLength": 5000
+      },
+      "objection": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "product": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "create_tasks": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "pipeline": {
+        "type": "object"
+      },
+      "recommendations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "feedback": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "responses": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "technique": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "technique",
+            "text"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "tasks_created": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action",
+      "recommendations",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "create_task"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo; con IA, tokens del modelo para retroalimentación personalizada.",
+  "risk": "local_write",
+  "limits": {
+    "timeoutSeconds": 60,
+    "maxToolCalls": 10
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Sin prospectos → explica cómo crearlos con business_prospecting. Sin servidor → respuestas de la biblioteca local de objeciones.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "El embudo se analiza en el teléfono; a la IA solo va el texto del discurso si lo pides.",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "objecion_precio",
+      "input": {
+        "action": "objection_practice",
+        "objection": "está muy caro"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

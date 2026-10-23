@@ -1,0 +1,184 @@
+{
+  "id": "home_inventory",
+  "name": "Inventario del hogar",
+  "description": "Inventario personal de la casa: qué tienes, dónde está, cuánto vale, número de serie y garantías por vencer (útil para seguros y mudanzas).",
+  "category": "hogar",
+  "exampleUtterances": [
+    "guarda en el inventario de la casa la refrigeradora en la cocina",
+    "dónde guardé el taladro",
+    "qué garantías vencen pronto",
+    "cuánto vale lo que tengo en la casa"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "add_item",
+          "list",
+          "find",
+          "warranties",
+          "value",
+          "delete_item"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "item_id": {
+        "type": "string",
+        "maxLength": 20
+      },
+      "location": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "quantity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000.0
+      },
+      "value": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "currency": {
+        "type": "string",
+        "enum": [
+          "CRC",
+          "USD",
+          "EUR"
+        ]
+      },
+      "purchase_date": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "warranty_until": {
+        "type": "string",
+        "maxLength": 10
+      },
+      "serial": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "notes": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "query": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 730
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "quantity": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "item": {
+        "type": "object"
+      },
+      "totals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "currency": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "currency",
+            "value"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [],
+  "model": "none",
+  "cost": "Sin costo.",
+  "risk": "sensitive",
+  "limits": {
+    "timeoutSeconds": 20,
+    "maxToolCalls": 0
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Los cambios se guardan al final: una cancelación no deja datos a medias.",
+  "errorHandling": "Fechas inválidas → se pide formato AAAA-MM-DD. Borrar exige confirmación.",
+  "maturity": "implemented",
+  "missing": [],
+  "privacy": "Datos solo en el teléfono (pueden incluir números de serie y valores).",
+  "localRoute": true,
+  "testCases": [
+    {
+      "name": "alta_casa",
+      "input": {
+        "action": "add_item",
+        "name": "Taladro Bosch",
+        "location": "bodega",
+        "value": 45000,
+        "currency": "CRC",
+        "warranty_until": "2026-01-15"
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

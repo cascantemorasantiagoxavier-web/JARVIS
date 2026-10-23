@@ -10,6 +10,8 @@ import com.example.jarvis.core.device.ActionResult
 import com.example.jarvis.core.device.AppMatcher
 import com.example.jarvis.core.device.CalendarRead
 import com.example.jarvis.core.device.DeviceGateway
+import com.example.jarvis.core.device.MessageChannel
+import com.example.jarvis.core.device.SaveResult
 import com.example.jarvis.core.json.bool
 import com.example.jarvis.core.json.double
 import com.example.jarvis.core.json.int
@@ -26,6 +28,11 @@ import com.example.jarvis.core.net.BackendClient
 import com.example.jarvis.core.net.BackendException
 import com.example.jarvis.core.net.BusinessSearchRequest
 import com.example.jarvis.core.net.NearSpec
+import com.example.jarvis.core.net.OpenFoodFactsClient
+import com.example.jarvis.core.net.ProductLookup
+import com.example.jarvis.core.net.ProductLookupResult
+import com.example.jarvis.core.net.TranscribeRequest
+import com.example.jarvis.core.net.VisionRequest
 import com.example.jarvis.core.net.WebFetchRequest
 import com.example.jarvis.core.net.WebSearchRequest
 import com.example.jarvis.core.notes.NoteSearchService
@@ -63,6 +70,7 @@ class ToolDeps(
     val currentLocation: suspend () -> LatLon?,
     val defaultLocation: () -> String?,
     val time: TimeSource,
+    val products: ProductLookup = OpenFoodFactsClient(),
 )
 
 /** Implementación real de todas las herramientas declaradas en shared/tools.json. */
@@ -103,6 +111,16 @@ class CoreToolset(private val d: ToolDeps) {
             "create_calendar_event" to ToolHandler { a, _ -> createCalendarEvent(a.str("title")!!, a.str("start")!!, a.str("end"), a.str("location")) },
             "share_text" to ToolHandler { a, _ -> share(a.str("text")!!, a.str("title")) },
             "end_conversation" to ToolHandler { _, ctx -> ctx.ui.emit(UiEvent.EndVoiceSession); ToolResult.ok("Conversación de voz finalizada.") },
+            // Internas (solo habilidades)
+            "open_map_point" to ToolHandler { a, _ -> openMapPoint(a.double("lat")!!, a.double("lon")!!, a.str("label")!!, a.str("mode") ?: "open") },
+            "find_place" to ToolHandler { a, _ -> findPlace(a.str("query")!!, a.str("country_code")) },
+            "compose_email" to ToolHandler { a, _ -> composeEmail(a.strings("to"), a.str("subject"), a.str("body")!!) },
+            "compose_message" to ToolHandler { a, _ -> composeMessage(a.str("channel")!!, a.str("phone"), a.str("text")!!) },
+            "save_document" to ToolHandler { a, _ -> saveDocument(a.str("file_name")!!, a.str("mime_type")!!, a.str("content")!!) },
+            "open_document" to ToolHandler { a, _ -> actionResult(d.device.openDocument(a.str("uri")!!), "Abriendo el documento.") },
+            "lookup_product" to ToolHandler { a, _ -> lookupProduct(a.str("barcode")!!) },
+            "analyze_image" to ToolHandler { a, _ -> analyzeImage(a.str("image_base64")!!, a.str("mime_type")!!, a.str("task")!!, a.str("question")) },
+            "transcribe_audio" to ToolHandler { a, _ -> transcribeAudio(a.str("audio_base64")!!, a.str("mime_type")!!, a.str("language")) },
         )
         handlers.forEach { (name, h) -> registry.register(name, h) }
     }
@@ -496,6 +514,77 @@ class CoreToolset(private val d: ToolDeps) {
 
     private suspend fun share(text: String, title: String?): ToolResult =
         actionResult(d.device.share(text, title), "Abrí el menú de compartir; elige tú la aplicación y el destinatario.")
+
+    // ---------- internas: mapas, redacción, documentos, productos, visión, audio ----------
+
+    private suspend fun openMapPoint(lat: Double, lon: Double, label: String, mode: String): ToolResult {
+        val r = if (mode == "directions") d.device.directions(lat, lon, label) else d.device.openLocation(lat, lon, label)
+        return actionResult(r, if (mode == "directions") "Abriendo la ruta hacia $label en tu app de mapas." else "Abriendo $label en el mapa.")
+    }
+
+    private suspend fun findPlace(query: String, country: String?): ToolResult = try {
+        val places = d.weather.geocode(query, country?.uppercase()).ifEmpty { if (country == null) d.weather.geocode(query, null) else emptyList() }
+        if (places.isEmpty()) {
+            ToolResult.ok("No encontré el lugar \"$query\".", jsonOf("places" to emptyList<Any>()))
+        } else {
+            ToolResult.ok(
+                "Encontré ${places.size} lugares para \"$query\" (fuente: Open-Meteo/GeoNames).",
+                jsonOf("source" to "Open-Meteo Geocoding (GeoNames)", "places" to places.map { mapOf("label" to it.label, "lat" to it.lat, "lon" to it.lon, "country" to it.country) }),
+            )
+        }
+    } catch (e: WeatherException) {
+        ToolResult.error("offline", "No se pudo buscar el lugar: ${e.message}")
+    }
+
+    private val emailRe = Regex("^[^@\\s]+@[^@\\s]+\\.[A-Za-z]{2,}$")
+
+    private suspend fun composeEmail(to: List<String>, subject: String?, body: String): ToolResult {
+        val bad = to.filterNot { emailRe.matches(it.trim()) }
+        if (bad.isNotEmpty()) return ToolResult.error("invalid_email", "Dirección de correo inválida: ${bad.joinToString()}.")
+        return actionResult(d.device.composeEmail(to.map { it.trim() }, subject, body), "Abrí tu app de correo con el borrador. Revísalo y envíalo tú.")
+    }
+
+    private suspend fun composeMessage(channel: String, phone: String?, text: String): ToolResult {
+        val ch = when (channel) { "sms" -> MessageChannel.SMS; "whatsapp" -> MessageChannel.WHATSAPP; else -> MessageChannel.ANY }
+        val clean = phone?.filter { it.isDigit() || it == '+' }?.takeIf { it.isNotEmpty() }
+        if (clean != null && clean.count { it.isDigit() } < 8) return ToolResult.error("invalid_phone", "El número \"$phone\" no parece válido.")
+        if (ch == MessageChannel.WHATSAPP && clean == null) return ToolResult.error("missing_phone", "Para WhatsApp necesito el número del destinatario.")
+        return actionResult(d.device.composeMessage(ch, clean, text), "Abrí la app de mensajes con el texto preparado. Revísalo y envíalo tú.")
+    }
+
+    private suspend fun saveDocument(fileName: String, mime: String, content: String): ToolResult {
+        val safe = fileName.trim()
+        if (!Regex("^[\\p{L}0-9 _().-]{1,80}$").matches(safe) || safe.startsWith(".")) {
+            return ToolResult.error("invalid_file_name", "Nombre de archivo no permitido: \"$fileName\".")
+        }
+        return when (val r = d.device.saveDocument(safe, mime, content.toByteArray(Charsets.UTF_8))) {
+            is SaveResult.Saved -> ToolResult.ok("Guardé \"$safe\" en ${r.location}.", jsonOf("uri" to r.uri, "location" to r.location, "file_name" to safe, "bytes" to content.toByteArray(Charsets.UTF_8).size))
+            is SaveResult.Failed -> ToolResult.error("save_failed", r.reason)
+        }
+    }
+
+    private suspend fun lookupProduct(barcode: String): ToolResult = when (val r = d.products.lookup(barcode.trim())) {
+        is ProductLookupResult.Found -> ToolResult.ok(
+            "Producto ${r.product.name ?: "(sin nombre en la base)"}" + (r.product.brands?.let { " de $it" } ?: "") + " (fuente: Open Food Facts).",
+            jsonOf("barcode" to barcode, "name" to r.product.name, "brands" to r.product.brands, "quantity" to r.product.quantity, "categories" to r.product.categories, "source_url" to r.product.sourceUrl),
+        )
+        ProductLookupResult.NotFound -> ToolResult.ok("El código $barcode no está en Open Food Facts.", jsonOf("barcode" to barcode, "found" to false))
+        is ProductLookupResult.Error -> ToolResult.error("offline", r.message)
+    }
+
+    private suspend fun analyzeImage(b64: String, mime: String, task: String, question: String?): ToolResult {
+        if (!Regex("^[A-Za-z0-9+/=\\s]+$").matches(b64.take(2000))) return ToolResult.error("invalid_image", "La imagen no está en base64.")
+        val r = d.backend.vision(VisionRequest(b64.filterNot { it.isWhitespace() }, mime, task, question))
+        return ToolResult.ok(
+            "Imagen analizada por el modelo de visión del servidor.",
+            jsonOf("task" to r.task, "text" to r.text, "fields" to r.fields, "model" to r.model, "retrieved_at" to r.retrievedAt, "notice" to "Datos extraídos por IA de una imagen: verificar antes de usar."),
+        )
+    }
+
+    private suspend fun transcribeAudio(b64: String, mime: String, language: String?): ToolResult {
+        val r = d.backend.transcribe(TranscribeRequest(b64.filterNot { it.isWhitespace() }, mime, language ?: "es"))
+        return ToolResult.ok("Nota de voz transcrita.", jsonOf("text" to r.text, "language" to r.language, "model" to r.model))
+    }
 
     private fun actionResult(r: ActionResult, okMessage: String): ToolResult = when (r) {
         is ActionResult.Done -> ToolResult.ok(r.message.ifBlank { okMessage })

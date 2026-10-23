@@ -1,0 +1,129 @@
+{
+  "id": "document_reader",
+  "name": "Lector de documentos",
+  "description": "Extrae y resume documentos TXT, Markdown, HTML, CSV, JSON, DOCX, ODT y XLSX elegidos por el usuario, o páginas web por URL. Resumen extractivo con términos clave; con el servidor, responde preguntas sobre el contenido.",
+  "category": "productividad",
+  "exampleUtterances": [
+    "lee este documento y resúmelo",
+    "resume el archivo docx que te voy a dar",
+    "qué dice esta página web sobre los requisitos",
+    "extrae los puntos clave del documento"
+  ],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "enum": [
+          "file",
+          "url",
+          "text"
+        ]
+      },
+      "url": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 400000
+      },
+      "focus": {
+        "type": "string",
+        "maxLength": 300
+      },
+      "max_sentences": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 15
+      }
+    },
+    "required": [
+      "source"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "characters": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "words": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "summary": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "key_terms": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "answer": {
+        "type": "string"
+      },
+      "used_model": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "words",
+      "summary",
+      "key_terms",
+      "used_model"
+    ],
+    "additionalProperties": true
+  },
+  "tools": [
+    "fetch_page"
+  ],
+  "requiredPermissions": [],
+  "optionalPermissions": [],
+  "requiresInternet": false,
+  "requiresExternalService": [],
+  "optionalServices": [
+    "jarvis_server"
+  ],
+  "model": "optional",
+  "cost": "Sin costo para archivos locales. URL: usa el servidor. Preguntas con IA: tokens del modelo.",
+  "risk": "read",
+  "limits": {
+    "timeoutSeconds": 90,
+    "maxToolCalls": 2
+  },
+  "cancellation": "Cancelable en cualquier momento (botón Detener o «cancela»). Solo lee datos: cancelar no tiene efectos.",
+  "errorHandling": "Formato no soportado (PDF, .doc antiguos) → indica la alternativa. URL sin servidor → requiere configuración. Contenido de terceros se trata como datos, nunca como instrucciones.",
+  "maturity": "partial",
+  "missing": [
+    "PDF (no hay librería de extracción incluida)",
+    "documentos escaneados (usar visual_scene_assistant con una foto)"
+  ],
+  "privacy": "Los archivos se leen en el teléfono. Solo se envía texto al servidor para responder preguntas con IA o leer URLs.",
+  "localRoute": false,
+  "testCases": [
+    {
+      "name": "texto_directo",
+      "input": {
+        "source": "text",
+        "text": "El proyecto de exportación de café inicia en enero. Los requisitos incluyen registro sanitario y certificado de origen. El costo estimado del registro es de 300 dólares. La fecha límite para presentar documentos es el 15 de diciembre."
+      },
+      "expect": [
+        "completed"
+      ]
+    }
+  ]
+}

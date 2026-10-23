@@ -27,6 +27,8 @@ class ContextRetriever(
     private val tasks: TaskService?,
     private val time: TimeSource,
     private val privacy: () -> PrivacySettings,
+    /** Catálogo breve de habilidades (null = sin habilidades). En voz no hay consulta: lista compacta. */
+    private val skillCatalog: ((query: String?) -> String)? = null,
 ) {
     suspend fun build(query: String, mode: AssistantMode, working: WorkingContext, voice: Boolean): String {
         val p = privacy()
@@ -66,6 +68,7 @@ class ContextRetriever(
                 snippets.forEach { sb.appendLine("- ${it.citation}: ${it.excerpt.replace('\n', ' ')}") }
             }
         }
+        skillCatalog?.let { sb.appendLine(it(if (voice) null else query)) }
         return sb.toString().trim()
     }
 }
