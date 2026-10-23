@@ -27,6 +27,8 @@ scripts/            test-all.sh, build-apk.sh, fetch-sherpa-kws.sh, skills/ (gen
 tests/              Mapa de todas las pruebas y su clasificación
 .claude/rules/      Reglas por área (android, backend, realtime-voice, security, testing)
 .claude/skills/     Skills de Claude Code para trabajar en el proyecto (ver abajo)
+.github/workflows/  build.yml: pruebas + APK de depuración en GitHub Actions (artefacto jarvis-debug-apk)
+render.yaml         Blueprint de Render para el servidor (las claves se ponen en el panel, nunca aquí)
 ```
 
 Paquetes de `:core` (`com.example.jarvis.core.*`): `brain`, `orchestrator`, `intent`, `tools`

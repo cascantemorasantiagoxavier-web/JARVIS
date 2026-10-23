@@ -1,0 +1,86 @@
+# Pruebas y APK de depuración de J.A.R.V.I.S. en GitHub Actions.
+# Los runners de GitHub tienen Android SDK y acceso a Google Maven: aquí se compila el APK sin
+# necesitar Android Studio. El APK queda como artefacto "jarvis-debug-apk" de cada ejecución.
+# No usa ninguna clave: las pruebas simulan OpenAI, OSM, UN Comtrade y Google.
+name: JARVIS · pruebas y APK
+
+on:
+  push:
+    branches: [main, master, "jarvis-*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Servidor (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  android:
+    name: Núcleo, APK y pruebas de la app
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app/Android
+        shell: bash # -eo pipefail: un fallo de Gradle no se pierde en el tee
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      # BackendIntegrationTest arranca el servidor Node real.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Dependencias del servidor (prueba de integración)
+        working-directory: backend
+        run: npm ci
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Pruebas del núcleo (:core)
+        run: ./gradlew -Pjarvis.coreOnly=true :core:test --stacktrace 2>&1 | tee build-core.log
+      - name: APK de depuración
+        run: ./gradlew :app:assembleDebug --stacktrace 2>&1 | tee build-apk.log
+      - name: Guardar el APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-debug-apk
+          path: app/Android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - name: Pruebas de la app (Robolectric)
+        run: ./gradlew :app:testDebugUnitTest --stacktrace 2>&1 | tee build-app-tests.log
+      # Los errores quedan como anotaciones: se leen con la API pública de GitHub sin token.
+      - name: Anotar errores de compilación
+        if: failure()
+        run: python3 ../../scripts/ci/annotate_gradle_errors.py build-*.log
+      - name: Informes de pruebas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-de-pruebas
+          path: |
+            app/Android/core/build/reports/tests/
+            app/Android/app/build/reports/tests/
+            app/Android/app/build/reports/lint-results*.html
+            app/Android/build-*.log
+          if-no-files-found: ignore

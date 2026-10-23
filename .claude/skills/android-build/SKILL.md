@@ -18,6 +18,16 @@ Código 1 = hay bloqueos; el script dice cuáles y qué sí se puede ejecutar.
 | Sin Google Maven o sin SDK | `cd app/Android && ./gradlew -Pjarvis.coreOnly=true :core:test` | cerebro, herramientas, habilidades, Realtime (sin Android) |
 | Todo accesible | `./gradlew :app:testDebugUnitTest` | Room, navegación, UI con Robolectric |
 | Todo accesible | `./gradlew :app:assembleDebug` o `scripts/build-apk.sh` | APK de depuración |
+| Sin Google Maven aquí, pero el código está en GitHub | flujo `.github/workflows/build.yml` (en cada push a `jarvis-*`, `main`, `master`) | pruebas + APK como artefacto |
+
+Seguir una ejecución sin token (repositorio público):
+```bash
+R=cascantemorasantiagoxavier-web/JARVIS
+curl -s "https://api.github.com/repos/$R/actions/runs?branch=jarvis-v0.1-habilidades&per_page=1"
+curl -s "https://api.github.com/repos/$R/actions/runs/<run_id>/jobs"          # pasos y conclusión
+curl -s "https://api.github.com/repos/$R/check-runs/<job_id>/annotations"     # errores de compilación
+```
+Los errores de Gradle/Kotlin se publican como anotaciones con `scripts/ci/annotate_gradle_errors.py`.
 
 ## 3. Errores frecuentes
 - **`Could not resolve com.android.tools.build:gradle`** → Google Maven bloqueado. No usar espejos no aprobados

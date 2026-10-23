@@ -73,7 +73,20 @@ Hace llamadas reales (OpenAI, OpenStreetMap, búsqueda). Consume un poco de sald
 
 ## 3. Compilar la app
 
-### Requisitos
+### Sin Android Studio: GitHub Actions (recomendado)
+Cada vez que se sube código a GitHub (ramas `main`, `master` o `jarvis-*`), el flujo
+`.github/workflows/build.yml` ejecuta las pruebas del servidor y del núcleo, compila el APK y luego
+las pruebas de la app. Para descargarlo:
+1. GitHub → tu repositorio → pestaña **Actions** → la última ejecución en verde.
+2. Abajo, en **Artifacts**, descarga `jarvis-debug-apk` (un `.zip` con el `.apk`).
+3. Pásalo al teléfono e instálalo (Android pedirá permitir «instalar apps desconocidas»).
+
+Si la compilación falla, los errores aparecen como anotaciones en la ejecución.
+No usa ninguna clave: las pruebas simulan los servicios externos.
+
+### Con Android Studio o línea de comandos
+
+#### Requisitos
 - JDK 17 o superior.
 - Android SDK con la plataforma 35 (lo instala Android Studio). Si usas la línea de comandos,
   crea `app/Android/local.properties` con `sdk.dir=/ruta/al/Android/Sdk`.
