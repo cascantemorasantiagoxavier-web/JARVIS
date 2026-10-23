@@ -18,7 +18,11 @@ backend/            Node 22 + Express 5. Guarda la clave de OpenAI. Rutas /api/*
   src/services/business   Overpass + Nominatim (OSM), estado por dato; Google Places solo al verificar
   src/services/trade      UN Comtrade (estadísticas oficiales de comercio exterior)
   src/services/video      OpusClip: clips de video y publicación en YouTube vía OpusClip
-  test/                   node:test con fetch simulado; test/live = pruebas reales (opt-in)
+  public/                 JARVIS Web: HUD en el navegador (ES modules sin compilar, CSP estricta).
+                          js/tools.js = herramientas con la MISMA política de riesgo; js/brain.js,
+                          js/realtime.js (voz WebRTC). public/shared = copia de ../shared (npm run sync-shared)
+  test/                   node:test con fetch simulado; test/e2e = Chromium real (Playwright);
+                          test/live = pruebas reales (opt-in)
 shared/             tools.json (49 herramientas con nivel de riesgo, fuente única), skills/*.json (45
                     manifiestos de habilidades) y persona-es.md
 app/Android/        Proyecto Gradle (wrapper 8.14.3)
@@ -49,7 +53,9 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 78 pruebas, sin red
+cd backend && npm ci && npm test          # 84 pruebas, sin red
+npm run test:e2e                           # JARVIS Web en Chromium real (9 pruebas; necesita playwright + chromium)
+npm run sync-shared                        # tras cambiar shared/tools.json o persona-es.md
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)
 npm start                                  # lee backend/.env
 npm run test:live                          # pruebas reales: requieren red y claves
@@ -117,6 +123,10 @@ cada una: `../JARVIS-KB/02-ARCHITECTURE/habilidades.md` (`python3 -I scripts/ski
 - Realtime no se inicia solo: hace falta un toque o la palabra clave activada por el usuario.
 - No afirmar que algo se desplegó, instaló, probó o que existe un APK sin haberlo verificado.
 
+JARVIS Web: todo el DOM se construye con `textContent` (nunca `innerHTML`/`eval`; lo vigila
+`backend/test/web.test.js`); enlaces solo `http(s)`/`tel:`; los datos de Google no se guardan en
+localStorage (`persistableCards`). Al añadir una herramienta para la web: `WEB_TOOLS` en `public/js/tools.js`.
+
 Detalle por área en `.claude/rules/*.md`.
 
 ## Añadir una herramienta
@@ -134,12 +144,15 @@ Detalle por área en `.claude/rules/*.md`.
 - Claves del usuario: UN Comtrade y Google Maps integradas (desactivadas sin clave); el resto de sus
   claves de Google Cloud no se usan. **No tiene clave de OpenAI todavía.** Ver
   `../JARVIS-KB/07-RESEARCH/apis-del-usuario.md` y ADR-016 (datos de Google: ni en el mapa OSM ni guardados).
-- `:app`: código completo, verificado solo con un arnés de tipos offline. NO se ha compilado con
-  AGP ni ejecutado: el entorno de desarrollo bloquea `dl.google.com` (Google Maven).
-- Sin emulador ni dispositivo: todo lo de audio, WebRTC, permisos y UI real está NO TESTEADO.
-- Versiones de AndroidX/Compose en `gradle/libs.versions.toml` sin verificar contra Google Maven.
-- `voice/wakeword` (variante `sherpa`) escrito contra la API de sherpa-onnx sin compilar.
-- No existe APK todavía.
+- `:app`: compila con AGP en GitHub Actions (`.github/workflows/build.yml`) y sus pruebas Robolectric
+  pasan ahí. Este entorno de desarrollo sigue sin Google Maven: aquí solo el arnés de tipos offline.
+- APK de depuración: lo produce CI (artefacto `jarvis-debug-apk`) y se publica en la Release
+  `jarvis-ultimo` (`releases/download/jarvis-ultimo/jarvis-debug.apk`). Sin firma de tienda.
+- Sin emulador ni dispositivo: audio, WebRTC, permisos y UI real en Android están NO TESTEADOS.
+- JARVIS Web: AUTOMATIZADO en Chromium (Playwright) con OpenAI/OpusClip simulados; la voz WebRTC se
+  prueba contra un par simulado, NO contra OpenAI real. Desplegada en Render: NO verificado.
+- Versiones de AndroidX/Compose resueltas por CI; `voice/wakeword` (variante `sherpa`) sin compilar
+  (el AAR no está en el repositorio).
 
 ## Definición de terminado
 

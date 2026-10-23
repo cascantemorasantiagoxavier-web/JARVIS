@@ -86,6 +86,8 @@ curl https://jarvis.tudominio.com/health
 3. `JARVIS_CLIENT_TOKEN` lo genera Render: cópialo de **Environment** a la app (Ajustes → Servidor),
    junto con la URL `https://<servicio>.onrender.com`.
 4. Comprueba `https://<servicio>.onrender.com/health`: dice qué funciones están activas, nunca las claves.
+5. **JARVIS Web:** abre `https://<servicio>.onrender.com/` en el navegador (computadora o teléfono),
+   pega el `JARVIS_CLIENT_TOKEN` cuando lo pida y listo. No hace falta instalar nada.
 
 El plan gratuito se duerme tras un rato sin uso; la primera petición puede tardar. Para la voz es mejor
 un plan de pago. Los contadores de uso se reinician con cada reinicio.

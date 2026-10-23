@@ -20,6 +20,15 @@ else
   record "Backend ............ NO TESTEADO: falta Node.js 22.9+"
 fi
 
+echo "==> JARVIS Web (Chromium real con Playwright)"
+if [ -d "$ROOT/backend/node_modules/playwright" ]; then
+  (cd "$ROOT/backend" && npm run test:e2e) \
+    && record "JARVIS Web ......... AUTOMATIZADO (Chromium): OK" \
+    || { record "JARVIS Web ......... AUTOMATIZADO (Chromium): FALLÓ (¿falta 'npx playwright install chromium'?)"; FAILED=1; }
+else
+  record "JARVIS Web ......... NO TESTEADO: falta playwright (cd backend && npm ci)"
+fi
+
 echo "==> Núcleo Kotlin (:core, sin Android SDK)"
 if command -v java >/dev/null 2>&1; then
   (cd "$ROOT/app/Android" && ./gradlew -Pjarvis.coreOnly=true :core:test --console=plain) \

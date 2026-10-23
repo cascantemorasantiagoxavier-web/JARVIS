@@ -34,6 +34,21 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm test
+      # JARVIS Web en Chromium real: chat, confirmaciones, clips, voz WebRTC (contra un par simulado) y móvil.
+      - name: Navegador para JARVIS Web
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas de JARVIS Web (Chromium)
+        run: npm run test:e2e
+        env:
+          SCREENSHOTS: ${{ runner.temp }}/jarvis-web
+      - name: Capturas de JARVIS Web
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-web-capturas
+          path: ${{ runner.temp }}/jarvis-web
+          if-no-files-found: ignore
+          retention-days: 14
 
   android:
     name: Núcleo, APK y pruebas de la app

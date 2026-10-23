@@ -1,9 +1,11 @@
 # Instalación y configuración de J.A.R.V.I.S.
 
-Hay dos piezas:
+Hay tres piezas:
 
 1. **Servidor JARVIS** (`backend/`): guarda tu clave de OpenAI y hace las llamadas de pago.
-2. **App Android** (`app/Android`): habla con tu servidor usando un token propio.
+2. **JARVIS Web** (`backend/public`): la página que sirve el mismo servidor. Se usa desde cualquier
+   navegador, sin instalar nada (ver [Usar JARVIS Web](#usar-jarvis-web)).
+3. **App Android** (`app/Android`): habla con tu servidor usando un token propio.
 
 > **Regla de oro:** la clave de OpenAI va SOLO en `backend/.env` de tu servidor (o en el panel de
 > secretos de tu hosting). Nunca en la app, en el APK, en el repositorio, en Obsidian ni en un chat.
@@ -59,6 +61,22 @@ curl http://localhost:8787/health
 npm run test:live
 ```
 Hace llamadas reales (OpenAI, OpenStreetMap, búsqueda). Consume un poco de saldo.
+
+---
+
+## Usar JARVIS Web
+
+1. Con el servidor en marcha, abre su dirección en el navegador: `https://<tu-servicio>.onrender.com/`
+   (o `http://localhost:8787/` si lo corres en tu computadora).
+2. La primera vez pide el **token del servidor** (`JARVIS_CLIENT_TOKEN`, en Render → Environment).
+   No es la clave de OpenAI. Se guarda solo en ese navegador.
+3. Escribe en el cuadro de la derecha o toca **Hablar** (el navegador pide el micrófono; la voz nunca
+   empieza sola). Paneles: Tareas, Memoria, Negocios, Clips (OpusClip → YouTube) y Ajustes.
+4. En el teléfono: menú del navegador → **Agregar a la pantalla principal** para abrirla como app.
+
+Diferencias con la app Android: la web no lee notas de Obsidian, cámara, contactos ni alarmas del
+teléfono; los avisos de tareas suenan solo con la página abierta; llamar, abrir rutas o compartir deja
+un botón que tú tocas. Memoria, tareas y conversación se guardan en ese navegador (Ajustes → Borrar todo).
 
 ---
 

@@ -1,5 +1,7 @@
 // Ensamblado de la aplicación Express. Todas las dependencias externas se inyectan,
 // lo que permite probar el servidor completo sin red.
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
@@ -46,12 +48,32 @@ export function createServices(config, logger, overrides = {}) {
   return { http, usage, realtime, chat, media, trade, clips, webSearch, pageFetcher, business };
 }
 
+/** Página web de JARVIS (HTML/CSS/JS sin dependencias) que usa este mismo servidor. */
+export const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+
 export function createApp(config, logger, overrides = {}) {
   const services = createServices(config, logger, overrides);
   const app = express();
   app.disable('x-powered-by');
   if (config.trustProxy) app.set('trust proxy', 1);
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          // La web solo habla con este servidor y con Open-Meteo (clima, sin clave).
+          'connect-src': ["'self'", 'https://api.open-meteo.com', 'https://geocoding-api.open-meteo.com'],
+          // Vistas previas de clips (almacenamiento de OpusClip) y audio de la voz (WebRTC).
+          'media-src': ["'self'", 'https:', 'blob:'],
+          'img-src': ["'self'", 'data:'],
+        },
+      },
+      // El micrófono lo pide la propia página al tocar "Hablar".
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+  // Archivos de la web: antes del límite de peticiones (cargar la página no gasta cupo). Sin caché
+  // larga (se revalida con ETag) para que tras un despliegue no se mezclen módulos de dos versiones.
+  app.use(express.static(PUBLIC_DIR, { index: 'index.html', maxAge: 0, fallthrough: true }));
   const smallJson = express.json({ limit: '512kb' });
   app.use((req, res, next) => (MEDIA_ROUTES.test(req.path) ? next() : smallJson(req, res, next)));
   app.use(
