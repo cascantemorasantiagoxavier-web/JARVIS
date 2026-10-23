@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Convierte errores de un log de Gradle en anotaciones de GitHub Actions (::error ...).
+"""Convierte errores de logs de Gradle y pruebas fallidas (JUnit XML) en anotaciones de GitHub Actions.
 
 Las anotaciones se pueden leer con la API pública de GitHub en repositorios públicos, sin token,
 lo que permite diagnosticar la compilación sin descargar el log completo.
-Uso: python3 scripts/ci/annotate_gradle_errors.py build-*.log
+Uso: python3 scripts/ci/annotate_gradle_errors.py build-*.log */build/test-results/**/*.xml
 """
 import pathlib
 import re
 import sys
+import xml.etree.ElementTree as ET
 
 WORKSPACE_MARK = "/app/Android/"
 MAX = 45  # GitHub muestra hasta 50 anotaciones por paso
@@ -27,9 +28,32 @@ def esc(s):
 
 
 seen, out = set(), []
+def junit(p):
+    """Una anotación por prueba fallida: clase.prueba, mensaje y las primeras líneas de la traza."""
+    try:
+        root = ET.parse(p).getroot()
+    except ET.ParseError:
+        return
+    for case in root.iter("testcase"):
+        fail = case.find("failure")
+        if fail is None:
+            fail = case.find("error")
+        if fail is None:
+            continue
+        name = f"{case.get('classname', '').split('.')[-1]}.{case.get('name')}"
+        trace = (fail.text or "").strip().splitlines()
+        detail = "\n".join([fail.get("message") or ""] + [t.strip() for t in trace[:8]])
+        if name not in seen:
+            seen.add(name)
+            out.append(f"::error title=Prueba fallida {name}::{esc(detail)}")
+
+
 for log in sys.argv[1:]:
     p = pathlib.Path(log)
     if not p.exists():
+        continue
+    if p.suffix == ".xml":
+        junit(p)
         continue
     lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
     for line in lines:
