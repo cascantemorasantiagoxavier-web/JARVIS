@@ -49,11 +49,13 @@ import com.example.jarvis.ui.home.HomeViewModel
 import com.example.jarvis.ui.map.MapScreen
 import com.example.jarvis.ui.memory.MemoryScreen
 import com.example.jarvis.ui.settings.SettingsScreen
+import com.example.jarvis.ui.skills.SkillsScreen
 import com.example.jarvis.ui.tasks.TasksScreen
 import com.example.jarvis.ui.theme.HudText
 import com.example.jarvis.ui.theme.JarvisTheme
 import com.example.jarvis.ui.theme.LocalHud
 import com.example.jarvis.ui.web.WebSearchScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -107,6 +109,9 @@ fun JarvisApp(c: AppContainer, routeRequest: RouteRequest?) {
                 composable("tasks") { TasksScreen(c, actions, back, notify) }
                 composable("memory") { MemoryScreen(c, back, notify) }
                 composable("settings") { SettingsScreen(c, back, notify) }
+                composable("skills") {
+                    SkillsScreen(c, back, onTry = { text -> c.orchestrator.submit(text); nav.navigate("chat") { launchSingleTop = true } })
+                }
             }
             SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp))
         }
@@ -120,6 +125,25 @@ fun JarvisApp(c: AppContainer, routeRequest: RouteRequest?) {
                 text = { Text("Acción: ${p.toolName}\n${p.summary}") },
                 confirmButton = { TextButton(onClick = { c.confirmations.answer(true) }) { Text("Confirmar") } },
                 dismissButton = { TextButton(onClick = { c.confirmations.answer(false) }) { Text("Cancelar") } },
+            )
+        }
+
+        // Grabación de una nota de voz pedida por una habilidad: siempre visible y con salida.
+        val recording by c.media.recording.collectAsState()
+        recording?.let { r ->
+            var elapsed by remember(r.startedAt) { mutableStateOf(0L) }
+            LaunchedEffect(r.startedAt) {
+                while (true) {
+                    elapsed = (System.currentTimeMillis() - r.startedAt) / 1000
+                    delay(500)
+                }
+            }
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Grabando nota de voz") },
+                text = { Text("%d:%02d de %d:%02d como máximo. Se envía al servidor para transcribirla.".format(elapsed / 60, elapsed % 60, r.maxSeconds / 60, r.maxSeconds % 60)) },
+                confirmButton = { TextButton(onClick = { c.media.finishRecording(keep = true) }) { Text("Guardar") } },
+                dismissButton = { TextButton(onClick = { c.media.finishRecording(keep = false) }) { Text("Cancelar") } },
             )
         }
 

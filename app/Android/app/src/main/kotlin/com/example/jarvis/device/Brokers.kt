@@ -54,6 +54,10 @@ class PermissionBroker(private val context: Context) : PermissionGate {
         when (permission) {
             "calendar.read" -> request(Manifest.permission.READ_CALENDAR)
             "location" -> request(Manifest.permission.ACCESS_COARSE_LOCATION)
+            "microphone" -> request(Manifest.permission.RECORD_AUDIO)
+            // La foto la toma la app de cámara del sistema (ACTION_IMAGE_CAPTURE): JARVIS no necesita
+            // el permiso CAMERA, solo que exista una cámara.
+            "camera" -> context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
             else -> false
         }
     }

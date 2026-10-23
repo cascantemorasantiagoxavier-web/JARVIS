@@ -4,12 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,18 +21,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Dehaze
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
@@ -63,9 +67,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -88,12 +92,12 @@ import com.example.jarvis.ui.components.HudPanel
 import com.example.jarvis.ui.components.hudFrame
 import com.example.jarvis.ui.theme.HudText
 import com.example.jarvis.ui.theme.LocalHud
-import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 /** Emblema propio de JARVIS (no reproduce logotipos de terceros). */
 @Composable
@@ -453,7 +457,7 @@ fun QuotePanel(next: TaskItem?, onClick: () -> Unit, modifier: Modifier = Modifi
     }
 }
 
-/** Accesos a los módulos de JARVIS (chat, web, negocios, mapa, tareas, memoria, ajustes). */
+/** Accesos a los módulos de JARVIS (chat, web, negocios, mapa, tareas, memoria, habilidades, ajustes). */
 @Composable
 fun ModuleDock(onNavigate: (String) -> Unit, modifier: Modifier = Modifier, compactLabels: Boolean = false) {
     val modules = listOf(
@@ -463,11 +467,21 @@ fun ModuleDock(onNavigate: (String) -> Unit, modifier: Modifier = Modifier, comp
         Triple("map", "Mapa", Icons.Outlined.Map),
         Triple("tasks", "Tareas", Icons.Outlined.TaskAlt),
         Triple("memory", "Memoria", Icons.Outlined.Memory),
+        Triple("skills", "Skills", Icons.Outlined.Extension),
         Triple("settings", "Ajustes", Icons.Outlined.Settings),
     )
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        modules.forEach { (route, label, icon) ->
-            HudButton(if (compactLabels) label.take(7) else label, icon, onClick = { onNavigate(route) }, modifier = Modifier.weight(1f))
+    if (compactLabels) {
+        // Teléfono en vertical: ancho fijo y desplazamiento lateral para que ningún botón quede aplastado.
+        Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            modules.forEach { (route, label, icon) ->
+                HudButton(label.take(8), icon, onClick = { onNavigate(route) }, modifier = Modifier.width(68.dp).fillMaxHeight())
+            }
+        }
+    } else {
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            modules.forEach { (route, label, icon) ->
+                HudButton(label, icon, onClick = { onNavigate(route) }, modifier = Modifier.weight(1f))
+            }
         }
     }
 }

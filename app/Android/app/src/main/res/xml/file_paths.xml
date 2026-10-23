@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rutas que FileProvider puede compartir. Nada fuera de estas carpetas sale de la app. -->
+<paths>
+    <!-- Fotos temporales de la cámara (se borran al leerlas) -->
+    <cache-path name="captures" path="captures/" />
+    <!-- Documentos generados por JARVIS en Android 9 o anterior -->
+    <external-files-path name="documents" path="Documents/JARVIS/" />
+    <files-path name="documents_internal" path="JARVIS/" />
+</paths>

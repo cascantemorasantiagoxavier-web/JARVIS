@@ -18,18 +18,20 @@ import com.example.jarvis.core.model.Role
 import com.example.jarvis.core.notes.MarkdownChunker
 import com.example.jarvis.core.notes.NotePrivacy
 import com.example.jarvis.core.notes.NoteSearchService
+import com.example.jarvis.core.skills.StoredRecord
 import com.example.jarvis.data.db.JarvisDatabase
 import com.example.jarvis.data.repo.RoomConversationStore
 import com.example.jarvis.data.repo.RoomMemoryRepository
 import com.example.jarvis.data.repo.RoomNoteIndex
 import com.example.jarvis.data.repo.RoomProspectRepository
+import com.example.jarvis.data.repo.RoomRecordStore
+import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import java.time.Instant
 
 /** Persistencia real con SQLite (Robolectric): sobrevive a cerrar y reabrir la base de datos. */
 @RunWith(AndroidJUnit4::class)
@@ -37,6 +39,24 @@ import java.time.Instant
 class RoomPersistenceTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val now = { Instant.parse("2025-09-29T13:42:00Z") }
+
+    @Test fun skillRecordsSurviveCloseAndReopen() = runBlocking {
+        val name = "test-skills.db"
+        context.deleteDatabase(name)
+        var db = JarvisDatabase.build(context, name)
+        var store = RoomRecordStore(db)
+        store.putAll(listOf(StoredRecord("finance.transactions", "1", "{\"amount\":\"3500\"}", 1), StoredRecord("finance.transactions", "2", "{\"amount\":\"1200\"}", 2)))
+        store.put(StoredRecord("finance.transactions", "1", "{\"amount\":\"3600\"}", 3)) // reemplaza, no duplica
+        db.close()
+
+        db = JarvisDatabase.build(context, name)
+        store = RoomRecordStore(db)
+        assertEquals(listOf("2", "1"), store.list("finance.transactions").map { it.id }) // orden por updatedAt
+        assertEquals("{\"amount\":\"3600\"}", store.get("finance.transactions", "1")!!.json)
+        assertTrue(store.delete("finance.transactions", "2"))
+        assertTrue(store.list("inventory.items").isEmpty())
+        db.close()
+    }
 
     @Test fun memorySurvivesCloseAndReopen() = runBlocking {
         val name = "test-memory.db"

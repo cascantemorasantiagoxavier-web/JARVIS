@@ -19,6 +19,13 @@ import com.example.jarvis.core.notes.NoteSearchService
 import com.example.jarvis.core.orchestrator.JarvisOrchestrator
 import com.example.jarvis.core.realtime.RealtimeSessionController
 import com.example.jarvis.core.realtime.VoiceEventSink
+import com.example.jarvis.core.skills.BackendSkillLlm
+import com.example.jarvis.core.skills.JarvisSkills
+import com.example.jarvis.core.skills.SkillEngine
+import com.example.jarvis.core.skills.SkillEnvironment
+import com.example.jarvis.core.skills.SkillRegistry
+import com.example.jarvis.core.skills.SkillRouter
+import com.example.jarvis.core.skills.SkillServices
 import com.example.jarvis.core.tasks.TaskService
 import com.example.jarvis.core.tools.ToolCatalog
 import com.example.jarvis.core.tools.ToolExecutor
@@ -34,12 +41,15 @@ import com.example.jarvis.data.repo.RoomConversationStore
 import com.example.jarvis.data.repo.RoomMemoryRepository
 import com.example.jarvis.data.repo.RoomNoteIndex
 import com.example.jarvis.data.repo.RoomProspectRepository
+import com.example.jarvis.data.repo.RoomRecordStore
 import com.example.jarvis.data.repo.RoomTaskRepository
 import com.example.jarvis.data.repo.RoomToolLogSink
 import com.example.jarvis.data.settings.SecretStore
 import com.example.jarvis.data.settings.SettingsRepository
 import com.example.jarvis.device.AndroidDeviceGateway
 import com.example.jarvis.device.ConfirmationBroker
+import com.example.jarvis.device.ImageTools
+import com.example.jarvis.device.MediaBroker
 import com.example.jarvis.device.PermissionBroker
 import com.example.jarvis.notes.VaultIndexer
 import com.example.jarvis.reminders.AlarmReminderScheduler
@@ -75,6 +85,7 @@ class AppContainer(val app: Application) {
     val permissions = PermissionBroker(app)
     val confirmations = ConfirmationBroker()
     val device = AndroidDeviceGateway(app, permissions)
+    val media = MediaBroker(app, permissions)
     val weather = WeatherClient(http)
 
     private val _uiEvents = MutableSharedFlow<UiEvent>(extraBufferCapacity = 8)
@@ -93,6 +104,8 @@ class AppContainer(val app: Application) {
 
     private fun notesIfLinked(): NoteSearchService? = if (settings.current.vaultUri != null) noteSearch else null
 
+    val toolLog = RoomToolLogSink(db, scope)
+
     val registry: ToolRegistry = ToolRegistry(ToolCatalog.loadFromResources()).also { reg ->
         CoreToolset(
             ToolDeps(
@@ -109,12 +122,38 @@ class AppContainer(val app: Application) {
                 time = time,
             ),
         ).registerAll(reg)
-        reg.verifyComplete()
     }
 
-    val executor = ToolExecutor(registry, permissions, confirmations, RoomToolLogSink(db, scope), time)
+    val executor = ToolExecutor(registry, permissions, confirmations, toolLog, time)
+
+    // ---- Habilidades: mismo ejecutor, permisos y confirmaciones que el resto de JARVIS ----
+    val skillEnv = SkillEnvironment(serverConfigured = ::backendConfigured, vaultLinked = { settings.current.vaultUri != null })
+    val skillServices = SkillServices(
+        store = RoomRecordStore(db),
+        tasks = tasks,
+        memory = memory,
+        notes = ::notesIfLinked,
+        noteStats = { if (settings.current.vaultUri != null) noteIndex.stats() else null },
+        prospects = prospects,
+        device = device,
+        media = media,
+        weather = weather,
+        weatherPlace = { settings.current.weatherPlace },
+        llm = { if (backendConfigured()) BackendSkillLlm(backend) else null },
+        time = time,
+        pixels = ImageTools.pixelDecoder,
+    )
+    val skills = SkillRegistry(registry)
+    val skillEngine = SkillEngine(skills, executor, skillServices, skillEnv, permissions, confirmations, toolLog)
+
+    init {
+        // Registra las habilidades y las meta-herramientas (list_skills, describe_skill, run_skill)
+        // antes de comprobar que todas las herramientas del contrato tienen implementación.
+        JarvisSkills.install(registry, skills, skillEngine, skillEnv)
+        registry.verifyComplete()
+    }
     val persona: Persona = Persona.load()
-    val contextRetriever = ContextRetriever(memory, ::notesIfLinked, tasks, time) { settings.current.privacy() }
+    val contextRetriever = ContextRetriever(memory, ::notesIfLinked, tasks, time, { settings.current.privacy() }) { q -> skills.briefCatalog(skillEnv, q) }
     val intentDetector = IntentDetector(time) { settings.current.defaultLocation }
 
     val brain = JarvisBrain(
@@ -126,6 +165,7 @@ class AppContainer(val app: Application) {
         context = contextRetriever,
         persona = persona,
         time = time,
+        skillRouter = SkillRouter(skills, skillEngine, skillEnv),
     )
 
     val orchestrator = JarvisOrchestrator(brain, conversation, scope, time, working, uiSink)

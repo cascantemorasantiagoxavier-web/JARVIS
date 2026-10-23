@@ -13,6 +13,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -122,6 +124,15 @@ data class NoteChunkFts(
     val tags: String,
 )
 
+/** Datos estructurados de las habilidades (gastos, inventario, cotizaciones…), en JSON por colección. */
+@Entity(tableName = "skill_records", primaryKeys = ["collection", "id"])
+data class SkillRecordEntity(
+    val collection: String,
+    val id: String,
+    val json: String,
+    val updatedAt: Long,
+)
+
 // ---------- DAOs ----------
 
 @Dao
@@ -196,15 +207,23 @@ abstract class NoteDao {
     @Query("SELECT notePath, MAX(modifiedAt) AS modifiedAt FROM note_chunks GROUP BY notePath") abstract fun stamps(): List<NoteStamp>
 }
 
+@Dao
+interface SkillRecordDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) fun upsertAll(e: List<SkillRecordEntity>)
+    @Query("SELECT * FROM skill_records WHERE collection = :collection AND id = :id") fun get(collection: String, id: String): SkillRecordEntity?
+    @Query("SELECT * FROM skill_records WHERE collection = :collection ORDER BY updatedAt") fun list(collection: String): List<SkillRecordEntity>
+    @Query("DELETE FROM skill_records WHERE collection = :collection AND id = :id") fun delete(collection: String, id: String): Int
+}
+
 /** Última modificación indexada de cada nota (para reindexar solo lo que cambió). */
 data class NoteStamp(val notePath: String, val modifiedAt: Long)
 
 @Database(
     entities = [
         MemoryEntity::class, TaskEntity::class, ProspectEntity::class, ChatEntity::class,
-        ToolLogEntity::class, NoteChunkEntity::class, NoteChunkFts::class,
+        ToolLogEntity::class, NoteChunkEntity::class, NoteChunkFts::class, SkillRecordEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class JarvisDatabase : RoomDatabase() {
@@ -214,9 +233,20 @@ abstract class JarvisDatabase : RoomDatabase() {
     abstract fun chat(): ChatDao
     abstract fun toolLog(): ToolLogDao
     abstract fun notes(): NoteDao
+    abstract fun skillRecords(): SkillRecordDao
 
     companion object {
         const val NAME = "jarvis.db"
+
+        /** v2: tabla de datos de las habilidades. SQL idéntico al que genera Room para la entidad. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `skill_records` (`collection` TEXT NOT NULL, `id` TEXT NOT NULL, " +
+                        "`json` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`collection`, `id`))",
+                )
+            }
+        }
 
         fun build(context: Context, name: String? = NAME): JarvisDatabase {
             val builder = if (name == null) {
@@ -224,7 +254,7 @@ abstract class JarvisDatabase : RoomDatabase() {
             } else {
                 Room.databaseBuilder(context, JarvisDatabase::class.java, name)
             }
-            return builder.build()
+            return builder.addMigrations(MIGRATION_1_2).build()
         }
     }
 }

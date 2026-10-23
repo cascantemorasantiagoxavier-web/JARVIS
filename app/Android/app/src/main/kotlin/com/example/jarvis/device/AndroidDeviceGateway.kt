@@ -2,10 +2,12 @@ package com.example.jarvis.device
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,31 +19,40 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.CancellationSignal
+import android.os.Environment
+import android.os.PowerManager
+import android.os.StatFs
 import android.provider.CalendarContract
 import android.provider.MediaStore
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.content.FileProvider
 import com.example.jarvis.R
 import com.example.jarvis.core.business.LatLon
 import com.example.jarvis.core.device.ActionResult
 import com.example.jarvis.core.device.BatteryInfo
 import com.example.jarvis.core.device.CalendarEvent
 import com.example.jarvis.core.device.CalendarRead
+import com.example.jarvis.core.device.DeviceDiagnostics
 import com.example.jarvis.core.device.DeviceGateway
 import com.example.jarvis.core.device.DeviceInfo
 import com.example.jarvis.core.device.InstalledApp
+import com.example.jarvis.core.device.MessageChannel
 import com.example.jarvis.core.device.NetworkInfo
+import com.example.jarvis.core.device.SaveResult
 import com.example.jarvis.core.device.SpecialApp
 import com.example.jarvis.reminders.Notifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 import java.net.URLEncoder
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.Locale
 import kotlin.coroutines.resume
 
 /**
@@ -161,6 +172,95 @@ class AndroidDeviceGateway(private val context: Context, private val permissions
             }
         }
         CalendarRead.Events(events)
+    }
+
+    /** Borrador en la app de correo (mailto:). El usuario revisa y pulsa enviar; JARVIS nunca envía. */
+    override suspend fun composeEmail(to: List<String>, subject: String?, body: String): ActionResult {
+        val query = listOfNotNull(subject?.let { "subject=" + Uri.encode(it) }, "body=" + Uri.encode(body)).joinToString("&")
+        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + to.joinToString(",") { Uri.encode(it, "@") } + "?" + query))
+            .putExtra(Intent.EXTRA_EMAIL, to.toTypedArray())
+            .putExtra(Intent.EXTRA_TEXT, body)
+        if (subject != null) intent.putExtra(Intent.EXTRA_SUBJECT, subject)
+        return launch(intent, "el correo")
+    }
+
+    /** SMS o WhatsApp con el texto ya escrito. El envío lo hace el usuario en esa app. */
+    override suspend fun composeMessage(channel: MessageChannel, phone: String?, text: String): ActionResult {
+        val digits = phone?.filter { it.isDigit() || it == '+' }?.takeIf { it.count(Char::isDigit) >= 8 }
+        return when (channel) {
+            MessageChannel.SMS -> launch(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + (digits ?: ""))).putExtra("sms_body", text), "los mensajes")
+            MessageChannel.WHATSAPP -> {
+                val number = digits?.filter(Char::isDigit).orEmpty()
+                launch(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$number?text=" + Uri.encode(text))), "WhatsApp")
+            }
+            MessageChannel.ANY -> share(text, null)
+        }
+    }
+
+    /**
+     * Guarda un documento generado. Android 10+: Descargas/JARVIS con MediaStore (sin permisos).
+     * Antes: carpeta de la app (Android/data/…/files/Documents/JARVIS), compartida por FileProvider.
+     */
+    override suspend fun saveDocument(fileName: String, mimeType: String, content: ByteArray): SaveResult = withContext(Dispatchers.IO) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val resolver = context.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/JARVIS")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return@withContext SaveResult.Failed("Android no permitió crear el archivo en Descargas.")
+                try {
+                    resolver.openOutputStream(uri)?.use { it.write(content) } ?: throw IllegalStateException("sin flujo de salida")
+                    resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+                } catch (e: Exception) {
+                    resolver.delete(uri, null, null)
+                    throw e
+                }
+                SaveResult.Saved(uri.toString(), "Descargas/JARVIS")
+            } else {
+                val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: context.filesDir, "JARVIS").apply { mkdirs() }
+                val file = File(dir, fileName)
+                file.writeBytes(content)
+                SaveResult.Saved(FileProvider.getUriForFile(context, "${context.packageName}.files", file).toString(), "almacenamiento de JARVIS (Documents/JARVIS)")
+            }
+        } catch (e: Exception) {
+            SaveResult.Failed("No se pudo guardar el archivo: ${e.message ?: e.javaClass.simpleName}.")
+        }
+    }
+
+    /** Abre un documento guardado por JARVIS con la app que el usuario elija. Solo URIs content://. */
+    override suspend fun openDocument(uri: String): ActionResult {
+        val parsed = Uri.parse(uri)
+        if (parsed.scheme != "content") return ActionResult.Failed("Solo se abren documentos guardados por JARVIS.")
+        val type = runCatching { context.contentResolver.getType(parsed) }.getOrNull() ?: "*/*"
+        val view = Intent(Intent.ACTION_VIEW).setDataAndType(parsed, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return launch(Intent.createChooser(view, "Abrir con").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "el documento")
+    }
+
+    /** Diagnóstico con datos legibles sin permisos especiales. */
+    override suspend fun diagnostics(): DeviceDiagnostics = withContext(Dispatchers.IO) {
+        val stat = runCatching { StatFs(context.filesDir.absolutePath) }.getOrNull()
+        val alarms = context.getSystemService(AlarmManager::class.java)
+        val power = context.getSystemService(PowerManager::class.java)
+        DeviceDiagnostics(
+            storageFreeMb = stat?.availableBytes?.div(1_048_576),
+            storageTotalMb = stat?.totalBytes?.div(1_048_576),
+            notificationsEnabled = context.getSystemService(NotificationManager::class.java)?.areNotificationsEnabled(),
+            exactAlarmsAllowed = if (Build.VERSION.SDK_INT >= 31) alarms?.canScheduleExactAlarms() else true,
+            batteryOptimizationIgnored = power?.isIgnoringBatteryOptimizations(context.packageName),
+            permissions = buildMap {
+                put("micrófono", permissions.isGranted(Manifest.permission.RECORD_AUDIO))
+                put("calendario", permissions.isGranted(Manifest.permission.READ_CALENDAR))
+                put("ubicación", permissions.isGranted(Manifest.permission.ACCESS_COARSE_LOCATION))
+                if (Build.VERSION.SDK_INT >= 33) put("notificaciones", permissions.isGranted(Manifest.permission.POST_NOTIFICATIONS))
+            },
+            locale = Locale.getDefault().toLanguageTag(),
+            timeZone = ZoneId.systemDefault().id,
+        )
     }
 
     /** Ubicación aproximada para "cerca de mí" (pide el permiso solo en ese momento). */

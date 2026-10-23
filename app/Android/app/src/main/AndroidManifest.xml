@@ -25,6 +25,8 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
+    <!-- Fotos con la app de cámara del sistema (ACTION_IMAGE_CAPTURE): no se declara CAMERA -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <!-- Visibilidad de paquetes (Android 11+): apps lanzables e intents que JARVIS puede abrir -->
     <queries>
@@ -50,6 +52,21 @@
         <intent>
             <action android:name="android.intent.action.INSERT" />
             <data android:mimeType="vnd.android.cursor.dir/event" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:mimeType="*/*" />
         </intent>
         <intent>
             <action android:name="android.speech.RecognitionService" />
@@ -89,6 +106,17 @@
             android:name=".voice.VoiceForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Fotos temporales para la cámara y documentos guardados en Android 9 o anterior -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <receiver
             android:name=".reminders.ReminderReceiver"

@@ -2,6 +2,7 @@ package com.example.jarvis
 
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -14,7 +15,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.jarvis.device.MediaRequest
 import com.example.jarvis.device.PermissionRequest
+import kotlinx.coroutines.CompletableDeferred
 import com.example.jarvis.ui.JarvisApp
 import kotlinx.coroutines.launch
 
@@ -24,10 +27,24 @@ data class RouteRequest(val route: String, val nonce: Long)
 class MainActivity : ComponentActivity() {
     private var pendingPermission: PermissionRequest? = null
     private var routeRequest by mutableStateOf<RouteRequest?>(null)
+    private var pendingDocument: CompletableDeferred<Uri?>? = null
+    private var pendingPhoto: CompletableDeferred<Boolean>? = null
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         pendingPermission?.result?.complete(result.values.all { it })
         pendingPermission = null
+    }
+
+    // Selector del sistema (SAF): el usuario elige el archivo; JARVIS solo recibe ese documento.
+    private val documentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        pendingDocument?.complete(uri)
+        pendingDocument = null
+    }
+
+    // App de cámara del sistema: guarda la foto en el URI de FileProvider que le damos.
+    private val photoLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
+        pendingPhoto?.complete(taken)
+        pendingPhoto = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +62,25 @@ class MainActivity : ComponentActivity() {
                     pendingPermission?.result?.complete(false)
                     pendingPermission = req
                     permissionLauncher.launch(req.permissions)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                container.media.requests.collect { req ->
+                    when (req) {
+                        is MediaRequest.PickDocument -> {
+                            pendingDocument?.complete(null)
+                            pendingDocument = req.result
+                            documentLauncher.launch(req.mimeTypes)
+                        }
+                        is MediaRequest.CapturePhoto -> {
+                            pendingPhoto?.complete(false)
+                            pendingPhoto = req.result
+                            photoLauncher.launch(req.target)
+                        }
+                    }
                 }
             }
         }
@@ -72,6 +108,8 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         (application as JarvisApplication).container.permissions.activityAttached = false
         pendingPermission?.result?.complete(false)
+        pendingDocument?.complete(null)
+        pendingPhoto?.complete(false)
         super.onDestroy()
     }
 

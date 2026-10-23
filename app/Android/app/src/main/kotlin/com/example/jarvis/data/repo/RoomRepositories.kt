@@ -19,6 +19,8 @@ import com.example.jarvis.core.net.WebSearchResult
 import com.example.jarvis.core.notes.NoteChunk
 import com.example.jarvis.core.notes.NoteIndexRepository
 import com.example.jarvis.core.notes.NoteIndexStats
+import com.example.jarvis.core.skills.RecordStore
+import com.example.jarvis.core.skills.StoredRecord
 import com.example.jarvis.core.tasks.TaskItem
 import com.example.jarvis.core.tasks.TaskPriority
 import com.example.jarvis.core.tasks.TaskRepository
@@ -30,6 +32,7 @@ import com.example.jarvis.data.db.JarvisDatabase
 import com.example.jarvis.data.db.MemoryEntity
 import com.example.jarvis.data.db.NoteChunkEntity
 import com.example.jarvis.data.db.ProspectEntity
+import com.example.jarvis.data.db.SkillRecordEntity
 import com.example.jarvis.data.db.TaskEntity
 import com.example.jarvis.data.db.ToolLogEntity
 import kotlinx.coroutines.CoroutineScope
@@ -212,3 +215,14 @@ class RoomNoteIndex(private val db: JarvisDatabase) : NoteIndexRepository {
 
     suspend fun clear() = io { db.notes().clear() }
 }
+
+/** Datos de las habilidades en Room. Solo viven en el teléfono (sin copia de seguridad: allowBackup=false). */
+class RoomRecordStore(private val db: JarvisDatabase) : RecordStore {
+    override suspend fun put(record: StoredRecord) = putAll(listOf(record))
+    override suspend fun putAll(records: List<StoredRecord>) = io { db.skillRecords().upsertAll(records.map { SkillRecordEntity(it.collection, it.id, it.json, it.updatedAt) }) }
+    override suspend fun get(collection: String, id: String): StoredRecord? = io { db.skillRecords().get(collection, id)?.toModel() }
+    override suspend fun list(collection: String): List<StoredRecord> = io { db.skillRecords().list(collection).map { it.toModel() } }
+    override suspend fun delete(collection: String, id: String): Boolean = io { db.skillRecords().delete(collection, id) == 1 }
+}
+
+private fun SkillRecordEntity.toModel() = StoredRecord(collection, id, json, updatedAt)
