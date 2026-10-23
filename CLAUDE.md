@@ -4,8 +4,10 @@ Asistente personal en español (Costa Rica) inspirado en Iron Man: app Android n
 La voz principal es OpenAI GPT Realtime por WebRTC. Un solo "cerebro" y un solo orquestador de
 herramientas sirven al chat, la voz, los botones y las automatizaciones.
 
-Base de conocimiento (Obsidian): `../JARVIS-KB/00-INDEX.md`. Lee primero
+Base de conocimiento (Obsidian): `../JARVIS-KB/00-INDEX.md`, en el repositorio **privado**
+`cascantemorasantiagoxavier-web/JARVIS1` (clonarlo como `../JARVIS-KB`). Lee primero
 `../JARVIS-KB/06-TASKS/CONTINUIDAD.md` para saber dónde quedó el trabajo.
+Código: `cascantemorasantiagoxavier-web/JARVIS`, rama `jarvis-v0.1-habilidades` (`master` es el proyecto anterior).
 
 ## Estructura
 
