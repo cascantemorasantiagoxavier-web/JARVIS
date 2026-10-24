@@ -79,6 +79,8 @@ const EnvSchema = z.object({
   // Llama a través de un proveedor compatible con la API de OpenAI (Groq por defecto).
   // Modelos "auto": se elige uno de la lista del proveedor; "none" desactiva esa función.
   LLAMA_API_KEY: optionalString,
+  // Mismo uso que LLAMA_API_KEY (Groq es el proveedor por defecto de Llama).
+  GROQ_API_KEY: optionalString,
   LLAMA_BASE_URL: z.string().optional().default('https://api.groq.com/openai/v1'),
   LLAMA_MODEL: z.string().optional().default('auto'),
   LLAMA_VISION_MODEL: z.string().optional().default('auto'),
@@ -133,8 +135,11 @@ export function loadConfig(env = process.env) {
     .filter(Boolean);
   if (!allowedModels.includes(e.OPENAI_REALTIME_MODEL)) allowedModels.unshift(e.OPENAI_REALTIME_MODEL);
 
-  const keys = { gemini: e.GEMINI_API_KEY, openai: e.OPENAI_API_KEY, llama: e.LLAMA_API_KEY };
-  const requested = e.AI_PROVIDERS === 'auto' ? ['gemini', 'openai', 'llama'] : e.AI_PROVIDERS.split(',').map((p) => p.trim().toLowerCase());
+  const llamaKey = e.LLAMA_API_KEY ?? e.GROQ_API_KEY;
+  const keys = { gemini: e.GEMINI_API_KEY, openai: e.OPENAI_API_KEY, llama: llamaKey };
+  const requested = e.AI_PROVIDERS === 'auto'
+    ? ['gemini', 'openai', 'llama']
+    : e.AI_PROVIDERS.split(',').map((p) => p.trim().toLowerCase()).map((p) => (p === 'groq' ? 'llama' : p));
   const unknown = requested.filter((p) => !(p in keys));
   if (unknown.length) throw new ConfigError(`Configuración inválida:\n- AI_PROVIDERS: proveedor desconocido "${unknown.join(', ')}" (usa gemini, openai o llama).`);
   const aiOrder = [...new Set(requested)].filter((p) => keys[p]);
@@ -192,7 +197,7 @@ export function loadConfig(env = process.env) {
       voice: e.GEMINI_VOICE,
     }),
     llama: Object.freeze({
-      apiKey: e.LLAMA_API_KEY,
+      apiKey: llamaKey,
       baseUrl: e.LLAMA_BASE_URL.replace(/\/+$/, ''),
       model: e.LLAMA_MODEL,
       visionModel: e.LLAMA_VISION_MODEL,

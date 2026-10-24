@@ -39,7 +39,7 @@ Abre `backend/.env` con un editor y rellena:
 |---|---|
 | `JARVIS_CLIENT_TOKEN` | El token que imprimió `gen-token`. Lo pondrás también en la app. |
 | `GEMINI_API_KEY` | Tu clave de Gemini (Google AI Studio). **Solo aquí.** |
-| `LLAMA_API_KEY` | Opcional: respaldo si Gemini se queda sin cuota. Por defecto Groq; otro proveedor con `LLAMA_BASE_URL`. |
+| `GROQ_API_KEY` (o `LLAMA_API_KEY`) | Opcional: respaldo con Llama si Gemini falla o se queda sin cuota (Groq: https://console.groq.com/keys). Otro proveedor compatible con `LLAMA_BASE_URL`. Para que Groq responda primero: `AI_PROVIDERS=groq,gemini`. |
 | `OPENAI_API_KEY` | Opcional: si también quieres OpenAI (voz Realtime de la app Android). |
 | `OSM_CONTACT` | Tu correo o web (lo exige la política de uso de OpenStreetMap). |
 | `TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_API_KEY` / `SEARXNG_URL` | Opcional: al menos uno para búsqueda web completa (Tavily tiene un plan gratis; Exa da créditos gratis al registrarse; Brave pide tarjeta. Revisa sus condiciones vigentes). Sin ninguno solo queda Wikipedia. |

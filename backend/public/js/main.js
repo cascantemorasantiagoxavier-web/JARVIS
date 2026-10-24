@@ -83,7 +83,7 @@ function voiceProvider() {
   return f.voice !== undefined ? f.voice : f.realtime ? 'openai' : null;
 }
 
-const PROVIDER_NAME = { gemini: 'Gemini', openai: 'OpenAI', llama: 'Llama' };
+const PROVIDER_NAME = { gemini: 'Gemini', openai: 'OpenAI', llama: 'Groq (Llama)' };
 function providerLabel(main, fallback = []) {
   if (!main) return undefined;
   return `${PROVIDER_NAME[main] ?? main}${fallback.length ? ` (respaldo: ${fallback.map((p) => PROVIDER_NAME[p] ?? p).join(', ')})` : ''}`;

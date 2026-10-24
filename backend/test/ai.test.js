@@ -40,6 +40,11 @@ test('config: orden de proveedores, voz y errores', () => {
   assert.equal(loadConfig({ ...base, GEMINI_API_KEY: 'g', VOICE_PROVIDER: 'none' }).ai.voice, null);
   assert.throws(() => loadConfig({ ...base, AI_PROVIDERS: 'gemini,claudio' }), /proveedor desconocido "claudio"/);
   assert.equal(loadConfig({ ...base, GEMINI_MODEL: 'models/gemini-x' }).gemini.model, 'gemini-x');
+  // GROQ_API_KEY sirve igual que LLAMA_API_KEY, y "groq" es sinónimo de "llama" en AI_PROVIDERS.
+  const groq = loadConfig({ ...base, GEMINI_API_KEY: 'g', GROQ_API_KEY: 'q', AI_PROVIDERS: 'groq,gemini' });
+  assert.deepEqual(groq.ai.order, ['llama', 'gemini']);
+  assert.equal(groq.llama.apiKey, 'q');
+  assert.equal(groq.llama.baseUrl, 'https://api.groq.com/openai/v1');
 });
 
 test('gemini: esquemas de herramientas sin palabras que la API no admite', () => {
