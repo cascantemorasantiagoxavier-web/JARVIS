@@ -155,7 +155,8 @@ Detalle por área en `.claude/rules/*.md`.
   `jarvis-ultimo` (`releases/download/jarvis-ultimo/jarvis-debug.apk`). Sin firma de tienda.
 - Sin emulador ni dispositivo: audio, WebRTC, permisos y UI real en Android están NO TESTEADOS.
 - JARVIS Web: AUTOMATIZADO en Chromium (Playwright) con Gemini/OpenAI/OpusClip simulados; la voz se prueba
-  contra un par WebRTC y un Gemini Live simulados, NO contra los reales. Desplegada en Render: NO verificado.
+  contra un par WebRTC y un Gemini Live simulados, NO contra los reales. Desplegada en Render (URL en la
+  KB privada): `/health` OK el 2026-10-24; uso real de Gemini aún NO verificado.
 - Gemini/Llama: contrato tomado del SDK oficial `@google/genai` 2.31.0 y de la API Chat Completions;
   NUNCA probado con claves reales. La app Android usa Gemini para chat, fotos y dictado (vía servidor),
   pero su voz en vivo sigue siendo OpenAI Realtime: sin clave de OpenAI cae a la voz local del teléfono.
