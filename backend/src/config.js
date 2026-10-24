@@ -85,6 +85,7 @@ const EnvSchema = z.object({
   SEARXNG_URL: optionalString,
   BRAVE_API_KEY: optionalString,
   TAVILY_API_KEY: optionalString,
+  EXA_API_KEY: optionalString,
   SEARCH_ENABLE_OPENAI: bool(false),
   WIKIPEDIA_LANG: z.string().optional().default('es'),
 
@@ -195,6 +196,7 @@ export function loadConfig(env = process.env) {
       searxngUrl: e.SEARXNG_URL,
       braveApiKey: e.BRAVE_API_KEY,
       tavilyApiKey: e.TAVILY_API_KEY,
+      exaApiKey: e.EXA_API_KEY,
       enableOpenAI: e.SEARCH_ENABLE_OPENAI,
       wikipediaLang: e.WIKIPEDIA_LANG,
     }),

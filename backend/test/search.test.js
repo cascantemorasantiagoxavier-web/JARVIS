@@ -7,7 +7,7 @@ import { assertPublicHttpUrl, isPrivateAddress } from '../src/http/safeFetch.js'
 import { silentLogger } from '../src/logger.js';
 import { dedupeByUrl, makeResult, withSiteOperators } from '../src/services/search/normalize.js';
 import { extractPage, normalizeCrPhone } from '../src/services/search/pageExtractor.js';
-import { braveProvider, searxngProvider, tavilyProvider, wikipediaProvider } from '../src/services/search/providers.js';
+import { braveProvider, exaProvider, searxngProvider, tavilyProvider, wikipediaProvider } from '../src/services/search/providers.js';
 import { WebSearchService } from '../src/services/search/webSearchService.js';
 import { fakeFetch, json, startServer } from './helpers.js';
 
@@ -54,6 +54,27 @@ test('proveedor Tavily con include_domains', async () => {
   const body = JSON.parse(f.calls[0].init.body);
   assert.deepEqual(body.include_domains, ['hacienda.go.cr']);
   assert.equal(f.calls[0].init.headers.authorization, 'Bearer tvly-x');
+});
+
+test('proveedor Exa: clave en x-api-key, dominios, país y extractos (contrato de exa-js 2.26.0)', async () => {
+  const f = fakeFetch([[() => true, () => json(200, {
+    requestId: 'r1',
+    results: [
+      { id: '1', title: 'Requisitos para exportar café', url: 'https://www.procomer.com/cafe', publishedDate: '2026-05-02T00:00:00.000Z', highlights: ['Paso 1: registro', 'Paso 2: certificado'] },
+      { id: '2', title: null, url: 'https://sin-titulo.example' },
+      { id: '3', title: 'No web', url: 'ftp://x' },
+    ],
+  })]]);
+  const r = await exaProvider({ http: http(f), apiKey: 'exa-x', country: 'CR' }).search({ query: 'exportar café', maxResults: 5, domains: ['procomer.com'] }, NOW);
+  const { url, init } = f.calls[0];
+  assert.equal(url, 'https://api.exa.ai/search');
+  assert.equal(init.headers['x-api-key'], 'exa-x');
+  const body = JSON.parse(init.body);
+  assert.deepEqual(body, { query: 'exportar café', type: 'auto', numResults: 5, includeDomains: ['procomer.com'], userLocation: 'CR', contents: { highlights: { maxCharacters: 600 } } });
+  assert.equal(r.length, 1, 'descarta resultados sin título o sin http(s)');
+  assert.equal(r[0].snippet, 'Paso 1: registro … Paso 2: certificado');
+  assert.equal(r[0].provider, 'exa');
+  assert.equal(r[0].source, 'procomer.com');
 });
 
 test('proveedor Wikipedia construye enlaces reales por pageid', async () => {

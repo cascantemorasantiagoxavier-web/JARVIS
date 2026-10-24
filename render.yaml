@@ -32,6 +32,8 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      - key: EXA_API_KEY # búsqueda web (alternativa a Tavily)
+        sync: false
       - key: BRAVE_API_KEY
         sync: false
       - key: OPUSCLIP_API_KEY

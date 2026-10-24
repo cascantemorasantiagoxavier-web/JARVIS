@@ -91,6 +91,47 @@ export function tavilyProvider({ http, apiKey }) {
   };
 }
 
+/**
+ * Exa (https://exa.ai). Contrato del SDK oficial exa-js 2.26.0: POST /search con la clave en la cabecera
+ * x-api-key; `type: "auto"`, extractos con `contents.highlights` y país del usuario en `userLocation`.
+ */
+export function exaProvider({ http, apiKey, country = 'CR' }) {
+  return {
+    id: 'exa',
+    label: 'Exa',
+    async search({ query, maxResults, domains }, retrievedAt) {
+      const res = await http.request('Exa', 'https://api.exa.ai/search', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': apiKey },
+        body: JSON.stringify({
+          query,
+          type: 'auto',
+          numResults: Math.min(maxResults, 20),
+          includeDomains: domains?.length ? domains : undefined,
+          userLocation: country,
+          contents: { highlights: { maxCharacters: 600 } },
+        }),
+      });
+      const body = res.json();
+      return (body.results ?? [])
+        .slice(0, maxResults)
+        .map((r) =>
+          makeResult(
+            {
+              title: r.title,
+              url: r.url,
+              snippet: Array.isArray(r.highlights) ? r.highlights.join(' … ') : r.summary ?? r.text,
+              publishedAt: r.publishedDate,
+              provider: 'exa',
+            },
+            retrievedAt,
+          ),
+        )
+        .filter(Boolean);
+    },
+  };
+}
+
 /** Herramienta web_search de la API Responses (de pago: tokens + llamadas de búsqueda). */
 export function openaiProvider({ http, apiKey, baseUrl, model }) {
   return {

@@ -17,7 +17,7 @@ backend/            Node 22 + Express 5. Guarda las claves de IA (Gemini, Llama,
   src/services/ai         gemini.js (chat con herramientas, fotos, dictado, modelos), compat.js (Llama por
                           API compatible con OpenAI), live.js (token efímero de Gemini Live)
   src/services/openai     persona, realtime (sesiones/llamadas), chat (Responses API), media (visión, transcripción)
-  src/services/search     SearXNG / Tavily / Brave / OpenAI / Wikipedia + extractor de páginas
+  src/services/search     SearXNG / Tavily / Exa / Brave / OpenAI / Wikipedia + extractor de páginas
   src/services/business   Overpass + Nominatim (OSM), estado por dato; Google Places solo al verificar
   src/services/trade      UN Comtrade (estadísticas oficiales de comercio exterior)
   src/services/video      OpusClip: clips de video y publicación en YouTube vía OpusClip
@@ -58,7 +58,7 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 96 pruebas, sin red
+cd backend && npm ci && npm test          # 97 pruebas, sin red
 npm run test:e2e                           # JARVIS Web en Chromium real (17 pruebas; necesita playwright + chromium)
 npm run sync-shared                        # tras cambiar shared/tools.json o persona-es.md
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)

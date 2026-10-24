@@ -3,6 +3,7 @@ import { AppError, Errors } from '../../http/errors.js';
 import { dedupeByUrl } from './normalize.js';
 import {
   braveProvider,
+  exaProvider,
   openaiProvider,
   searxngProvider,
   tavilyProvider,
@@ -14,6 +15,7 @@ export function buildProviders(config, http) {
   const available = {};
   if (s.searxngUrl) available.searxng = searxngProvider({ http, baseUrl: s.searxngUrl });
   if (s.tavilyApiKey) available.tavily = tavilyProvider({ http, apiKey: s.tavilyApiKey });
+  if (s.exaApiKey) available.exa = exaProvider({ http, apiKey: s.exaApiKey, country: config.osm.defaultCountry.toUpperCase() });
   if (s.braveApiKey) available.brave = braveProvider({ http, apiKey: s.braveApiKey });
   if (s.enableOpenAI && config.openai.apiKey) {
     available.openai = openaiProvider({
@@ -27,7 +29,7 @@ export function buildProviders(config, http) {
 
   const order =
     s.providers === 'auto'
-      ? ['searxng', 'tavily', 'brave', 'openai', 'wikipedia']
+      ? ['searxng', 'tavily', 'exa', 'brave', 'openai', 'wikipedia']
       : s.providers.split(',').map((p) => p.trim());
   return order.filter((id) => available[id]).map((id) => available[id]);
 }

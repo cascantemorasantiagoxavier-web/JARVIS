@@ -42,7 +42,7 @@ Abre `backend/.env` con un editor y rellena:
 | `LLAMA_API_KEY` | Opcional: respaldo si Gemini se queda sin cuota. Por defecto Groq; otro proveedor con `LLAMA_BASE_URL`. |
 | `OPENAI_API_KEY` | Opcional: si también quieres OpenAI (voz Realtime de la app Android). |
 | `OSM_CONTACT` | Tu correo o web (lo exige la política de uso de OpenStreetMap). |
-| `SEARXNG_URL` / `TAVILY_API_KEY` / `BRAVE_API_KEY` | Opcional: al menos uno para búsqueda web completa. Sin ninguno solo queda Wikipedia. |
+| `TAVILY_API_KEY` / `EXA_API_KEY` / `BRAVE_API_KEY` / `SEARXNG_URL` | Opcional: al menos uno para búsqueda web completa (Tavily tiene un plan gratis; Exa da créditos gratis al registrarse; Brave pide tarjeta. Revisa sus condiciones vigentes). Sin ninguno solo queda Wikipedia. |
 | `UN_COMTRADE_API_KEY` | Opcional: estadísticas oficiales de importación y exportación (UN Comtrade, gratis con cuota diaria). |
 | `OPUSCLIP_API_KEY` | Opcional: clips de video con OpusClip y publicación en YouTube (conecta tu canal dentro de OpusClip). Requiere plan con API (Pro, Max o Business). |
 | `GOOGLE_MAPS_API_KEY` | Opcional: segunda fuente al verificar negocios (Google Places API (New); de pago con cuota gratuita). Activa "Places API (New)" en tu proyecto de Google Cloud y restringe la clave a esa API. |
