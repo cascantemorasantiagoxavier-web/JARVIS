@@ -452,3 +452,16 @@ test('gemini: con GEMINI_FALLBACK_MODELS=auto elige Flash disponibles para la cl
     await srv.close();
   }
 });
+
+test('groq: con modelo "auto" elige el mejor para herramientas y nunca guard, whisper ni tts', async () => {
+  const { CompatClient } = await import('../src/services/ai/compat.js');
+  const pick = async (ids) => {
+    const c = new CompatClient({ config: { llama: { apiKey: 'k', baseUrl: 'https://x', model: 'auto', visionModel: 'auto', transcribeModel: 'auto' } }, http: null });
+    c.models = async () => ids;
+    return c.chatModel();
+  };
+  assert.equal(await pick(['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'whisper-large-v3']), 'openai/gpt-oss-120b');
+  assert.equal(await pick(['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'meta-llama/llama-guard-4-12b']), 'llama-3.3-70b-versatile');
+  assert.equal(await pick(['openai/gpt-oss-120b:free', 'meta-llama/llama-3.3-70b-instruct:free']), 'openai/gpt-oss-120b:free', 'también con nombres de OpenRouter');
+  await assert.rejects(pick(['whisper-large-v3', 'playai-tts']), /no ofrece un modelo para chat/);
+});

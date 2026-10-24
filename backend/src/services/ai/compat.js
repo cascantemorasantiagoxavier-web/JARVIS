@@ -1,5 +1,5 @@
-// Llama (u otro modelo) a través de un proveedor compatible con la API Chat Completions de OpenAI:
-// Groq por defecto, o Meta Llama API, OpenRouter, Together… cambiando LLAMA_BASE_URL. Mismo formato
+// Groq (Llama, gpt-oss, Kimi…) u otro proveedor compatible con la API Chat Completions de OpenAI:
+// Groq por defecto, o Cerebras, OpenRouter, Meta Llama API, Together… cambiando LLAMA_BASE_URL. Mismo formato
 // de salida que /api/chat con OpenAI, para que la web y la app no cambien.
 import { AppError, Errors } from '../../http/errors.js';
 
@@ -116,8 +116,27 @@ export class CompatClient {
     return scored[0].id;
   }
 
+  /**
+   * Modelo de chat con "auto": el mejor para usar herramientas entre los que ofrece el proveedor (Groq,
+   * Cerebras, OpenRouter…). Se descartan los de seguridad, audio, voz e incrustaciones.
+   */
   chatModel() {
-    return this.pick(this.cfg.model, (id) => (id.includes('llama') && !/guard|vision|whisper|prompt/.test(id) ? 1 + (/70b|maverick|versatile|405b/.test(id) ? 2 : 0) + (/scout|instruct/.test(id) ? 1 : 0) : 0), 'chat');
+    return this.pick(this.cfg.model, (id) => {
+      if (/guard|whisper|tts|playai|orpheus|embed|vision|moderation|compound|distil/.test(id)) return 0;
+      const ranked = [
+        [/gpt-oss-120b/, 10],
+        [/kimi-k2/, 9],
+        [/llama-4-maverick/, 8],
+        [/qwen3?-?235b|qwen-3-235b/, 8],
+        [/llama-3\.3-70b/, 7],
+        [/deepseek-v3/, 7],
+        [/qwen3-32b|qwen-qwq/, 6],
+        [/llama-4-scout/, 5],
+        [/gpt-oss-20b/, 4],
+        [/llama/, 2],
+      ];
+      return ranked.find(([re]) => re.test(id))?.[1] ?? 0;
+    }, 'chat');
   }
 
   visionModel() {
