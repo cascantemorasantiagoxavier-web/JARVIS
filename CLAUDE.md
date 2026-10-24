@@ -58,7 +58,7 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 97 pruebas, sin red
+cd backend && npm ci && npm test          # 99 pruebas, sin red
 npm run test:e2e                           # JARVIS Web en Chromium real (17 pruebas; necesita playwright + chromium)
 npm run sync-shared                        # tras cambiar shared/tools.json o persona-es.md
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)

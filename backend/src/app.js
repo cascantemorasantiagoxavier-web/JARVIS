@@ -31,7 +31,7 @@ export function createServices(config, logger, overrides = {}) {
     createHttpClient({ fetchImpl: overrides.fetchImpl, timeoutMs: config.outboundTimeoutMs, userAgent: userAgent(config), logger });
   const usage = overrides.usage ?? new UsageTracker();
   const realtime = new RealtimeService({ config, http, logger, usage });
-  const gemini = new GeminiClient({ config, http });
+  const gemini = new GeminiClient({ config, http, sleep: overrides.sleep });
   const llama = new CompatClient({ config, http });
   const chat = new ChatService({ config, http, logger, usage, gemini, llama });
   const media = new MediaService({ config, http, logger, usage, gemini, llama });

@@ -6,25 +6,33 @@ import { AppError, Errors } from '../../http/errors.js';
 
 const PROVIDER = 'Gemini';
 
-export function mapGeminiError(status, text) {
-  let message = '';
-  let reason = '';
+/** Mensaje corto de Google (sin datos nuestros) para que la persona vea el motivo real en pantalla. */
+function googleReason(text) {
   try {
-    const j = JSON.parse(text);
-    message = String(j?.error?.message ?? '');
-    reason = String(j?.error?.status ?? '');
+    const e = JSON.parse(text)?.error ?? {};
+    return { message: String(e.message ?? '').replace(/\s+/g, ' ').slice(0, 180), status: String(e.status ?? '') };
   } catch {
-    /* cuerpo no JSON */
+    return { message: '', status: '' };
   }
-  if (status === 401 || /API key not valid|API_KEY_INVALID/i.test(message)) return Errors.upstreamAuth(PROVIDER);
+}
+
+export function mapGeminiError(status, text) {
+  const { message, status: reason } = googleReason(text);
+  const detail = message ? ` Detalle de Google: «${message}».` : '';
+  if (status === 401 || /API key not valid|API_KEY_INVALID/i.test(message)) {
+    return new AppError(502, 'upstream_auth', `Gemini rechazó la clave (GEMINI_API_KEY): revisa que esté bien copiada en Render.${detail}`);
+  }
   if (status === 403) {
-    return new AppError(502, 'upstream_forbidden', 'Gemini rechazó la clave: revisa que sea de Google AI Studio y que la API "Generative Language" esté activa.');
+    return new AppError(502, 'upstream_forbidden', `Gemini rechazó la clave: revisa que sea de Google AI Studio y que la API "Generative Language" esté activa.${detail}`);
   }
   if (status === 429 || reason === 'RESOURCE_EXHAUSTED') {
-    return new AppError(429, 'upstream_quota', 'Se alcanzó el límite de uso de Gemini (el nivel gratuito tiene cuotas por minuto y por día). Prueba en un rato.');
+    return new AppError(429, 'upstream_quota', `Se alcanzó el límite de uso de Gemini (el nivel gratuito tiene cuotas por minuto y por día). Prueba en un rato.${detail}`);
   }
-  if (status === 404) return new AppError(502, 'upstream_model', 'El modelo de Gemini configurado no existe o no está disponible para esta clave.');
-  if (status === 400) return new AppError(502, 'upstream_rejected', 'Gemini rechazó la petición.');
+  if (status === 404) return new AppError(502, 'upstream_model', `El modelo de Gemini configurado no existe o no está disponible para esta clave.${detail}`);
+  if (status === 400) return new AppError(502, 'upstream_rejected', `Gemini rechazó la petición.${detail}`);
+  if (status >= 500) {
+    return new AppError(502, 'upstream_unavailable', `Gemini está saturado o tuvo un error interno (HTTP ${status}). Prueba de nuevo en un momento.${detail}`);
+  }
   return undefined;
 }
 
@@ -45,7 +53,12 @@ export function geminiSchema(schema) {
 }
 
 export function functionDeclarations(tools) {
-  return tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: geminiSchema(t.parameters) }));
+  return tools.map((t) => {
+    const schema = geminiSchema(t.parameters);
+    // Funciones sin argumentos (get_datetime, end_conversation): sin esquema, como en la documentación.
+    const empty = !schema?.properties || Object.keys(schema.properties).length === 0;
+    return { name: t.name, description: t.description, ...(empty ? {} : { parametersJsonSchema: schema }) };
+  });
 }
 
 function textOf(content) {
@@ -158,9 +171,10 @@ export function fromGeminiResponse(body) {
 const MODE_TOKENS = { FAST: 2048, BALANCED: 4096, DEEP: 8192 };
 
 export class GeminiClient {
-  constructor({ config, http }) {
+  constructor({ config, http, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
     this.cfg = config.gemini;
     this.http = http;
+    this.sleep = sleep;
     this.modelCache = null;
   }
 
@@ -180,8 +194,32 @@ export class GeminiClient {
     return res.json();
   }
 
-  generate(model, body, opts) {
-    return this.call(`models/${encodeURIComponent(model)}:generateContent`, { body, ...opts });
+  /**
+   * generateContent con un reintento si Gemini responde 500/503 (saturado) y, si sigue fallando, no
+   * existe el modelo o no hay cuota, con los modelos de respaldo (GEMINI_FALLBACK_MODELS). Un tiempo
+   * agotado no se reintenta, para no dejar a la persona esperando minutos.
+   */
+  async generate(model, body, opts = {}) {
+    const models = [model, ...this.cfg.fallbackModels.filter((m) => m !== model)];
+    let lastErr;
+    for (const m of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const raw = await this.call(`models/${encodeURIComponent(m)}:generateContent`, { body, ...opts });
+          if (m !== model) raw.modelVersion = raw.modelVersion ?? m;
+          return raw;
+        } catch (err) {
+          lastErr = err;
+          if (err?.code === 'upstream_unavailable' && attempt === 0) {
+            await this.sleep(1000);
+            continue;
+          }
+          if (!['upstream_unavailable', 'upstream_model', 'upstream_quota'].includes(err?.code)) throw err;
+          break;
+        }
+      }
+    }
+    throw lastErr;
   }
 
   async chat({ instructions, input, tools = [], mode = 'BALANCED' }) {

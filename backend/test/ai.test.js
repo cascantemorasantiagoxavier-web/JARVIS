@@ -314,3 +314,59 @@ test('voz en vivo: sin clave de Gemini → 503; GEMINI_LIVE_MODEL fijo no consul
     await srv2.close();
   }
 });
+
+test('gemini: 503 se reintenta; si el modelo sigue caído responde el de respaldo; el motivo de Google se muestra', async () => {
+  const urls = [];
+  let plan = [];
+  const f = fakeFetch([
+    [isGenerate, (u) => {
+      urls.push(u.replace(/.*\/models\//, '').replace(':generateContent', ''));
+      const next = plan.shift() ?? 'ok';
+      if (next === 'ok') return geminiReply([{ text: 'Hola, jefe.' }]);
+      return json(next, { error: { code: next, status: next === 503 ? 'UNAVAILABLE' : 'INVALID_ARGUMENT', message: next === 503 ? 'The model is overloaded. Please try again later.' : 'Invalid value at tools[0].function_declarations[3]' } });
+    }],
+  ]);
+  const srv = await startServer({ env: onlyGemini, overrides: { fetchImpl: f, sleep: async () => {} } });
+  try {
+    plan = [503, 'ok'];
+    let r = await srv.call('POST', '/api/chat', { input: [{ role: 'user', content: 'hola' }] });
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(urls, ['gemini-flash-latest', 'gemini-flash-latest'], 'un reintento con el mismo modelo');
+
+    urls.length = 0;
+    plan = [503, 503, 'ok'];
+    r = await srv.call('POST', '/api/chat', { input: [{ role: 'user', content: 'hola' }] });
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.body.text, 'Hola, jefe.');
+    assert.deepEqual(urls, ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'], 'pasa al modelo de respaldo');
+
+    urls.length = 0;
+    plan = [503, 503, 503, 503, 503, 503];
+    r = await srv.call('POST', '/api/chat', { input: [{ role: 'user', content: 'hola' }] });
+    assert.equal(r.status, 502);
+    assert.equal(r.body.error.code, 'upstream_unavailable');
+    assert.match(r.body.error.message, /saturado/);
+    assert.match(r.body.error.message, /The model is overloaded/);
+    assert.equal(urls.length, 6, '3 modelos × 2 intentos');
+
+    urls.length = 0;
+    plan = [400];
+    r = await srv.call('POST', '/api/chat', { input: [{ role: 'user', content: 'hola' }] });
+    assert.equal(r.body.error.code, 'upstream_rejected');
+    assert.match(r.body.error.message, /Detalle de Google: «Invalid value at tools\[0\]/);
+    assert.equal(urls.length, 1, 'un 400 no se reintenta');
+    assert.doesNotMatch(r.text, /test-gemini-key/);
+  } finally {
+    await srv.close();
+  }
+});
+
+test('gemini: funciones sin argumentos van sin esquema', async () => {
+  const { functionDeclarations } = await import('../src/services/ai/gemini.js');
+  const d = functionDeclarations([
+    { name: 'get_datetime', description: 'Hora', parameters: { type: 'object', properties: {}, additionalProperties: false } },
+    TOOLS[0],
+  ]);
+  assert.deepEqual(d[0], { name: 'get_datetime', description: 'Hora' });
+  assert.ok(d[1].parametersJsonSchema);
+});

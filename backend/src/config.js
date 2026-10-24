@@ -71,6 +71,8 @@ const EnvSchema = z.object({
   GEMINI_TRANSCRIBE_MODEL: optionalString,
   // "auto": el servidor elige un modelo con voz en vivo de los disponibles para la clave.
   GEMINI_LIVE_MODEL: z.string().optional().default('auto'),
+  // Si el modelo principal está saturado, no existe o sin cuota, se prueban estos en orden.
+  GEMINI_FALLBACK_MODELS: z.string().optional().default('gemini-flash-lite-latest,gemini-2.5-flash'),
   GEMINI_VOICE: z.string().regex(/^[A-Za-z]{2,30}$/).optional().default('Charon'),
 
   // Llama a través de un proveedor compatible con la API de OpenAI (Groq por defecto).
@@ -182,6 +184,9 @@ export function loadConfig(env = process.env) {
       visionModel: (e.GEMINI_VISION_MODEL ?? geminiModel).replace(/^models\//, ''),
       transcribeModel: (e.GEMINI_TRANSCRIBE_MODEL ?? geminiModel).replace(/^models\//, ''),
       liveModel: e.GEMINI_LIVE_MODEL,
+      fallbackModels: Object.freeze(
+        e.GEMINI_FALLBACK_MODELS.split(',').map((m) => m.trim().replace(/^models\//, '')).filter((m) => m && m !== 'none'),
+      ),
       voice: e.GEMINI_VOICE,
     }),
     llama: Object.freeze({
