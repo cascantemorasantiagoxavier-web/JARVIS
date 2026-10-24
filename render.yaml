@@ -14,6 +14,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION # JARVIS necesita Node 22.9 o superior
+        value: "22"
       - key: HOST
         value: 0.0.0.0
       - key: TRUST_PROXY

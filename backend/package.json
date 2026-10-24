@@ -9,8 +9,8 @@
     "node": ">=22.9"
   },
   "scripts": {
-    "start": "node --env-file-if-exists=.env src/server.js",
-    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
     "test": "node --test --test-reporter=spec \"test/*.test.js\"",
     "test:live": "JARVIS_LIVE_TESTS=1 node --env-file-if-exists=.env --test --test-reporter=spec \"test/live/*.test.js\"",
     "test:e2e": "node --test --test-reporter=spec --test-concurrency=1 \"test/e2e/*.e2e.js\"",
