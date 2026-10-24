@@ -6,6 +6,7 @@ import {
   BusinessSearchBody,
   CallIdParams,
   ChatBody,
+  LiveTokenBody,
   ClipProjectBody,
   ClipProjectParams,
   ClipPublishBody,
@@ -36,11 +37,15 @@ export function healthRouter({ config, realtime, chat, webSearch, media, trade, 
       features: {
         realtime: realtime.enabled,
         realtimeModel: realtime.enabled ? config.openai.realtime.model : null,
+        // Voz en vivo para la web: "gemini" (Gemini Live), "openai" (Realtime) o null.
+        voice: config.ai.voice,
+        // Proveedor de IA que atiende cada función (el primero de la lista; los demás son respaldo).
+        ai: { chat: config.ai.order[0] ?? null, fallback: config.ai.order.slice(1), vision: media.visionProvider, transcription: media.transcriptionProvider },
         chat: chat.enabled,
         webSearch: webSearch.describe().map((p) => p.id),
         business: true,
-        vision: media.enabled,
-        transcription: media.enabled && Boolean(config.openai.media.transcribeModel),
+        vision: Boolean(media.visionProvider),
+        transcription: Boolean(media.transcriptionProvider),
         trade: trade.enabled,
         googlePlaces: business.googlePlacesEnabled,
         clips: clips.enabled,
@@ -50,7 +55,7 @@ export function healthRouter({ config, realtime, chat, webSearch, media, trade, 
   return r;
 }
 
-export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, usage, media, trade, clips, config }) {
+export function apiRouter({ realtime, live, chat, webSearch, business, pageFetcher, usage, media, trade, clips, config }) {
   const r = Router();
 
   r.post('/realtime/session', validate(RealtimeSessionBody), wrap(async (req, res) => {
@@ -59,6 +64,10 @@ export function apiRouter({ realtime, chat, webSearch, business, pageFetcher, us
 
   r.post('/realtime/call', validate(RealtimeCallBody), wrap(async (req, res) => {
     res.json(await realtime.createCall(req.valid.body));
+  }));
+
+  r.post('/live/token', validate(LiveTokenBody), wrap(async (req, res) => {
+    res.json(await live.createToken(req.valid.body));
   }));
 
   r.post('/realtime/call/:callId/hangup', validate(CallIdParams, 'params'), wrap(async (req, res) => {

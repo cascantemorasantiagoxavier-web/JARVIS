@@ -2,7 +2,7 @@
 // capturó a propósito; el servidor la reenvía a OpenAI con la clave permanente, sin
 // guardarla (store:false) y sin registrar su contenido en los logs.
 import { AppError, Errors } from '../../http/errors.js';
-import { parseResponse } from './chat.js';
+import { parseResponse, shouldFallback } from './chat.js';
 import { mapOpenAIError } from './realtime.js';
 
 // Campos que se extraen por tarea. Siempre el valor tal como aparece en la imagen, o null.
@@ -67,34 +67,123 @@ function decode(base64, mime, magic, what) {
   return buf;
 }
 
+/** Variante para Gemini: cadenas vacías en lugar de null (el servidor las convierte en null). */
+function extractionSchemaGemini(task) {
+  const fields = FIELD_SETS[task];
+  const value = { type: 'string', description: 'Tal como aparece en la imagen; cadena vacía si no aparece o no se lee.' };
+  return {
+    type: 'object',
+    properties: { text: { type: 'string' }, fields: { type: 'object', properties: Object.fromEntries(fields.map((f) => [f, value])), required: fields } },
+    required: ['text', 'fields'],
+  };
+}
+
+function jsonHint(task) {
+  return ` Responde SOLO con un objeto JSON con las claves "text" (texto) y "fields" (objeto con las claves ${FIELD_SETS[task].map((f) => `"${f}"`).join(', ')}; cada valor es texto o null).`;
+}
+
+function parseJsonLoose(text) {
+  const t = String(text ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  return JSON.parse(t);
+}
+
 export class MediaService {
-  constructor({ config, http, logger, usage }) {
+  constructor({ config, http, logger, usage, gemini, llama }) {
     this.config = config;
     this.http = http;
     this.logger = logger;
     this.usage = usage;
+    this.clients = { gemini, llama };
+  }
+
+  /** Proveedores que pueden analizar fotos, en el orden configurado (config.ai.order). */
+  get visionProviders() {
+    return this.config.ai.order.filter((p) => p !== 'llama' || this.config.llama.visionModel !== 'none');
+  }
+
+  get transcriptionProviders() {
+    return this.config.ai.order.filter(
+      (p) => p === 'gemini' || (p === 'openai' && this.config.openai.media.transcribeModel) || (p === 'llama' && this.config.llama.transcribeModel !== 'none'),
+    );
+  }
+
+  get visionProvider() {
+    return this.visionProviders[0] ?? null;
+  }
+
+  get transcriptionProvider() {
+    return this.transcriptionProviders[0] ?? null;
   }
 
   get enabled() {
-    return Boolean(this.config.openai.apiKey);
+    return Boolean(this.visionProvider);
   }
 
-  checkQuota(kind, max) {
-    if (!this.enabled) throw Errors.notConfigured(kind === 'vision' ? 'visión (OPENAI_API_KEY)' : 'transcripción (OPENAI_API_KEY)');
+  checkQuota(kind, max, providers) {
+    if (!providers.length) {
+      throw Errors.notConfigured(`${kind === 'vision' ? 'análisis de fotos' : 'dictado'} (GEMINI_API_KEY, OPENAI_API_KEY o LLAMA_API_KEY)`);
+    }
     if (this.usage.mediaToday(kind) >= max) {
       throw Errors.rateLimited(`Límite diario de ${kind === 'vision' ? 'análisis de imágenes' : 'transcripciones'} alcanzado (control de costos).`, 3600);
     }
   }
 
+  async withFallback(providers, run) {
+    for (const [i, p] of providers.entries()) {
+      try {
+        return { ...(await run(p)), provider: p };
+      } catch (err) {
+        if (i === providers.length - 1 || !shouldFallback(err)) throw err;
+        this.logger?.warn('media_provider_fallback', { from: p, to: providers[i + 1], code: err?.code });
+      }
+    }
+    throw Errors.notConfigured('IA');
+  }
+
   async analyze({ imageBase64, mimeType, task, question }) {
     const cfg = this.config.openai.media;
-    this.checkQuota('vision', cfg.maxVisionPerDay);
+    const providers = this.visionProviders;
+    this.checkQuota('vision', cfg.maxVisionPerDay, providers);
     decode(imageBase64, mimeType, IMAGE_MAGIC[mimeType], 'archivo de imagen');
     const extraction = Boolean(FIELD_SETS[task]);
+    const prompt = PROMPTS[task] + UNTRUSTED;
+    this.usage.recordMedia('vision');
+    const parsed = await this.withFallback(providers, (p) => {
+      if (p === 'openai') return this.openaiVision({ prompt, imageBase64, mimeType, task, question, extraction });
+      if (p === 'gemini') {
+        return this.clients.gemini.vision({ prompt, question, imageBase64, mimeType, schema: extraction ? extractionSchemaGemini(task) : undefined });
+      }
+      return this.clients.llama.vision({ prompt: extraction ? prompt + jsonHint(task) : prompt, question, imageBase64, mimeType, json: extraction });
+    });
+    if (parsed.status === 'incomplete') {
+      throw new AppError(502, 'upstream_incomplete', 'La respuesta del modelo quedó incompleta; prueba con una imagen más simple.');
+    }
+    let text = parsed.text;
+    let fields = {};
+    if (extraction) {
+      let out;
+      try {
+        out = parseJsonLoose(parsed.text);
+      } catch (err) {
+        throw Errors.upstream(parsed.provider, err);
+      }
+      text = typeof out.text === 'string' ? out.text.trim() : '';
+      fields = Object.fromEntries(
+        FIELD_SETS[task].map((f) => {
+          const v = out.fields?.[f];
+          return [f, typeof v === 'string' && v.trim() !== '' ? v.trim().slice(0, 500) : null];
+        }),
+      );
+    }
+    return { task, text, fields, model: parsed.model, provider: parsed.provider, retrievedAt: new Date().toISOString() };
+  }
+
+  async openaiVision({ prompt, imageBase64, mimeType, task, question, extraction }) {
+    const cfg = this.config.openai.media;
     const effort = this.config.openai.text.reasoningEffort;
     const body = {
       model: cfg.visionModel,
-      instructions: PROMPTS[task] + UNTRUSTED,
+      instructions: prompt,
       input: [
         {
           role: 'user',
@@ -111,7 +200,6 @@ export class MediaService {
       store: false,
     };
     if (effort) body.reasoning = { effort };
-    this.usage.recordMedia('vision');
     const res = await this.http.request('OpenAI', `${this.config.openai.baseUrl}/responses`, {
       method: 'POST',
       headers: { authorization: `Bearer ${this.config.openai.apiKey}`, 'content-type': 'application/json' },
@@ -120,44 +208,34 @@ export class MediaService {
       timeout: 90_000,
     });
     const raw = res.json();
-    const refusal = refusalOf(raw);
-    if (refusal) throw new AppError(422, 'vision_refused', 'El modelo no procesó la imagen.');
-    const parsed = parseResponse(raw);
-    if (parsed.status === 'incomplete') {
-      throw new AppError(502, 'upstream_incomplete', 'La respuesta del modelo quedó incompleta; prueba con una imagen más simple.');
-    }
-    let text = parsed.text;
-    let fields = {};
-    if (extraction) {
-      let out;
-      try {
-        out = JSON.parse(parsed.text);
-      } catch (err) {
-        throw Errors.upstream('OpenAI', err);
-      }
-      text = typeof out.text === 'string' ? out.text.trim() : '';
-      fields = Object.fromEntries(
-        FIELD_SETS[task].map((f) => {
-          const v = out.fields?.[f];
-          return [f, typeof v === 'string' && v.trim() !== '' ? v.trim().slice(0, 500) : null];
-        }),
-      );
-    }
-    return { task, text, fields, model: parsed.model, retrievedAt: new Date().toISOString() };
+    if (refusalOf(raw)) throw new AppError(422, 'vision_refused', 'El modelo no procesó la imagen.');
+    return parseResponse(raw);
   }
 
   async transcribe({ audioBase64, mimeType, language }) {
     const cfg = this.config.openai.media;
-    if (!cfg.transcribeModel) throw Errors.notConfigured('transcripción (OPENAI_TRANSCRIBE_MODEL=none)');
-    this.checkQuota('transcribe', cfg.maxTranscriptionsPerDay);
+    const providers = this.transcriptionProviders;
+    this.checkQuota('transcribe', cfg.maxTranscriptionsPerDay, providers);
     const kind = AUDIO[mimeType];
     const buf = decode(audioBase64, mimeType, kind.magic, 'audio');
+    this.usage.recordMedia('transcribe');
+    const out = await this.withFallback(providers, async (p) => {
+      if (p === 'openai') return { text: await this.openaiTranscribe(buf, mimeType, kind, language), model: cfg.transcribeModel };
+      if (p === 'gemini') {
+        const mime = mimeType === 'audio/m4a' ? 'audio/mp4' : mimeType;
+        return { text: await this.clients.gemini.transcribe({ audioBase64, mimeType: mime, language }), model: this.config.gemini.transcribeModel };
+      }
+      return { text: await this.clients.llama.transcribe({ buffer: buf, mimeType, ext: kind.ext, language }), model: null };
+    });
+    return { text: out.text, language: language ?? null, model: out.model, provider: out.provider };
+  }
+
+  async openaiTranscribe(buf, mimeType, kind, language) {
     const form = new FormData();
     form.append('file', new Blob([buf], { type: mimeType }), `nota.${kind.ext}`);
-    form.append('model', cfg.transcribeModel);
+    form.append('model', this.config.openai.media.transcribeModel);
     if (language) form.append('language', language);
     form.append('response_format', 'json');
-    this.usage.recordMedia('transcribe');
     const res = await this.http.request('OpenAI', `${this.config.openai.baseUrl}/audio/transcriptions`, {
       method: 'POST',
       headers: { authorization: `Bearer ${this.config.openai.apiKey}` },
@@ -167,7 +245,7 @@ export class MediaService {
     });
     const out = res.json();
     if (typeof out?.text !== 'string') throw Errors.upstream('OpenAI', new Error('respuesta sin text'));
-    return { text: out.text.trim(), language: language ?? null, model: cfg.transcribeModel };
+    return out.text.trim();
   }
 }
 

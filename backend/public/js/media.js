@@ -122,3 +122,96 @@ export class Recorder {
     this.stream = null;
   }
 }
+
+/** WAV PCM 16 bits mono a partir de bloques Int16. */
+export function encodeWav(chunks, rate) {
+  const samples = chunks.reduce((n, c) => n + c.length, 0);
+  const view = new DataView(new ArrayBuffer(44 + samples * 2));
+  const str = (o, s) => [...s].forEach((ch, i) => view.setUint8(o + i, ch.charCodeAt(0)));
+  str(0, 'RIFF');
+  view.setUint32(4, 36 + samples * 2, true);
+  str(8, 'WAVE');
+  str(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  str(36, 'data');
+  view.setUint32(40, samples * 2, true);
+  let o = 44;
+  for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) view.setInt16(o, c[i], true);
+  return new Uint8Array(view.buffer);
+}
+
+/** Dictado en WAV 16 kHz (formato que acepta cualquier proveedor, incluido Gemini). Misma interfaz que Recorder. */
+export class WavRecorder {
+  constructor({ maxSeconds = 120, onTick = () => {}, onAutoStop = () => {} } = {}) {
+    Object.assign(this, { maxSeconds, onTick, onAutoStop });
+    this.on = false;
+  }
+
+  static supported() {
+    return Boolean(window.AudioWorkletNode && navigator.mediaDevices?.getUserMedia);
+  }
+
+  get recording() {
+    return this.on;
+  }
+
+  async start() {
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      throw new Error('Sin permiso de micrófono. Actívalo en el candado de la barra de direcciones.');
+    }
+    this.ctx = new AudioContext();
+    await this.ctx.audioWorklet.addModule('/js/pcm-worklet.js');
+    this.node = new AudioWorkletNode(this.ctx, 'pcm-capture', { processorOptions: { targetRate: 16000, chunk: 4000 } });
+    const sink = this.ctx.createGain();
+    sink.gain.value = 0;
+    this.ctx.createMediaStreamSource(this.stream).connect(this.node).connect(sink).connect(this.ctx.destination);
+    this.chunks = [];
+    this.flushed = null;
+    this.node.port.onmessage = (e) => {
+      if (e.data === 'flushed') this.flushed?.();
+      else if (e.data instanceof ArrayBuffer) this.chunks.push(new Int16Array(e.data));
+    };
+    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    this.on = true;
+    this.started = Date.now();
+    this.timer = setInterval(() => {
+      const s = Math.floor((Date.now() - this.started) / 1000);
+      this.onTick(s);
+      if (s >= this.maxSeconds) this.onAutoStop();
+    }, 500);
+  }
+
+  async stop() {
+    if (!this.on) return null;
+    this.on = false;
+    await Promise.race([new Promise((r) => { this.flushed = r; this.node.port.postMessage('flush'); }), new Promise((r) => setTimeout(r, 500))]);
+    const seconds = Math.round((Date.now() - this.started) / 1000);
+    this.release();
+    const wav = encodeWav(this.chunks, 16000);
+    if (wav.length < 44 + 16000) throw new Error('La grabación quedó vacía. Mantén el micrófono un poco más.');
+    let s = '';
+    for (let i = 0; i < wav.length; i += 0x8000) s += String.fromCharCode(...wav.subarray(i, i + 0x8000));
+    return { base64: btoa(s), mimeType: 'audio/wav', seconds };
+  }
+
+  cancel() {
+    this.on = false;
+    this.release();
+  }
+
+  release() {
+    clearInterval(this.timer);
+    for (const t of this.stream?.getTracks() ?? []) t.stop();
+    this.ctx?.close().catch(() => {});
+    this.stream = null;
+    this.ctx = null;
+  }
+}

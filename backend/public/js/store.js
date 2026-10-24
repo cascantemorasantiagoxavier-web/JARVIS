@@ -24,6 +24,7 @@ function write(key, value) {
 export const DEFAULT_SETTINGS = {
   token: '',
   voice: 'cedar',
+  geminiVoice: 'Charon',
   weatherPlace: 'San José, Costa Rica',
   reduceMotion: false,
   speakReplies: false,

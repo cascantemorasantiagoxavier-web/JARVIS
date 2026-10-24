@@ -1,8 +1,9 @@
 # CLAUDE.md — J.A.R.V.I.S.
 
 Asistente personal en español (Costa Rica) inspirado en Iron Man: app Android nativa + backend propio.
-La voz principal es OpenAI GPT Realtime por WebRTC. Un solo "cerebro" y un solo orquestador de
-herramientas sirven al chat, la voz, los botones y las automatizaciones.
+El cerebro es **Gemini** (Google AI Studio), con respaldo opcional en Llama u OpenAI (`AI_PROVIDERS`). La
+voz en vivo de la web es Gemini Live; OpenAI Realtime por WebRTC sigue disponible (es la de la app Android).
+Un solo "cerebro" y un solo orquestador de herramientas sirven al chat, la voz, los botones y las automatizaciones.
 
 Base de conocimiento (Obsidian): `../JARVIS-KB/00-INDEX.md`, en el repositorio **privado**
 `cascantemorasantiagoxavier-web/JARVIS1` (clonarlo como `../JARVIS-KB`). Lee primero
@@ -12,7 +13,9 @@ Código: `cascantemorasantiagoxavier-web/JARVIS`, rama `jarvis-v0.1-habilidades`
 ## Estructura
 
 ```
-backend/            Node 22 + Express 5. Guarda la clave de OpenAI. Rutas /api/*
+backend/            Node 22 + Express 5. Guarda las claves de IA (Gemini, Llama, OpenAI). Rutas /api/*
+  src/services/ai         gemini.js (chat con herramientas, fotos, dictado, modelos), compat.js (Llama por
+                          API compatible con OpenAI), live.js (token efímero de Gemini Live)
   src/services/openai     persona, realtime (sesiones/llamadas), chat (Responses API), media (visión, transcripción)
   src/services/search     SearXNG / Tavily / Brave / OpenAI / Wikipedia + extractor de páginas
   src/services/business   Overpass + Nominatim (OSM), estado por dato; Google Places solo al verificar
@@ -20,7 +23,8 @@ backend/            Node 22 + Express 5. Guarda la clave de OpenAI. Rutas /api/*
   src/services/video      OpusClip: clips de video y publicación en YouTube vía OpusClip
   public/                 JARVIS Web: HUD en el navegador (ES modules sin compilar, CSP estricta).
                           js/tools.js = herramientas con la MISMA política de riesgo; js/brain.js,
-                          js/realtime.js (voz WebRTC), js/media.js (foto, dictado), sw.js (instalable y sin
+                          js/realtime.js (voz OpenAI), js/gemini-live.js + pcm-worklet.js (voz Gemini),
+                          js/media.js (foto, dictado), sw.js (instalable y sin
                           conexión; nunca /api). public/shared = copia de ../shared (npm run sync-shared)
   test/                   node:test con fetch simulado; test/e2e = Chromium real (Playwright);
                           test/live = pruebas reales (opt-in)
@@ -54,8 +58,8 @@ holográfico, chat, negocios, mapa, tareas, habilidades…).
 
 ```bash
 # Backend
-cd backend && npm ci && npm test          # 85 pruebas, sin red
-npm run test:e2e                           # JARVIS Web en Chromium real (14 pruebas; necesita playwright + chromium)
+cd backend && npm ci && npm test          # 96 pruebas, sin red
+npm run test:e2e                           # JARVIS Web en Chromium real (17 pruebas; necesita playwright + chromium)
 npm run sync-shared                        # tras cambiar shared/tools.json o persona-es.md
 npm run gen-token                          # token app↔servidor (no es la clave de OpenAI)
 npm start                                  # lee backend/.env
@@ -107,9 +111,9 @@ cada una: `../JARVIS-KB/02-ARCHITECTURE/habilidades.md` (`python3 -I scripts/ski
 
 ## Reglas que no se negocian
 
-- La clave permanente de OpenAI vive SOLO en `backend/.env` del servidor. Nunca en Kotlin, Gradle,
-  recursos, APK, repositorio, notas de Obsidian ni logs. La app solo guarda la URL del servidor y
-  `JARVIS_CLIENT_TOKEN` (cifrado con Android Keystore).
+- Las claves de IA (Gemini, Llama, OpenAI) viven SOLO en `backend/.env` o en el panel de Render. Nunca en
+  Kotlin, Gradle, recursos, APK, la web, el repositorio, notas de Obsidian ni logs. La app y la web solo
+  guardan la URL/token del servidor; la voz en vivo usa tokens efímeros de un solo uso.
 - Nunca pedir claves en el chat. Nunca escribir secretos en la KB.
 - No inventar datos: teléfonos, direcciones, correos, coordenadas, resultados ni recuerdos. Cada
   dato de negocio lleva estado (`found`, `verified`, `unavailable`, `conflict`, `approximate`) y fuente.
@@ -143,15 +147,18 @@ Detalle por área en `.claude/rules/*.md`.
 - Backend y `:core`: pruebas AUTOMATIZADAS en verde (incluidas las 45 habilidades, con datos simulados).
 - Visión y transcripción: probadas con OpenAI simulado; nunca contra la API real (red bloqueada).
 - Claves del usuario: UN Comtrade y Google Maps integradas (desactivadas sin clave); el resto de sus
-  claves de Google Cloud no se usan. **No tiene clave de OpenAI todavía.** Ver
+  claves de Google Cloud no se usan. **Usa Gemini como cerebro (no OpenAI).** Ver
   `../JARVIS-KB/07-RESEARCH/apis-del-usuario.md` y ADR-016 (datos de Google: ni en el mapa OSM ni guardados).
 - `:app`: compila con AGP en GitHub Actions (`.github/workflows/build.yml`) y sus pruebas Robolectric
   pasan ahí. Este entorno de desarrollo sigue sin Google Maven: aquí solo el arnés de tipos offline.
 - APK de depuración: lo produce CI (artefacto `jarvis-debug-apk`) y se publica en la Release
   `jarvis-ultimo` (`releases/download/jarvis-ultimo/jarvis-debug.apk`). Sin firma de tienda.
 - Sin emulador ni dispositivo: audio, WebRTC, permisos y UI real en Android están NO TESTEADOS.
-- JARVIS Web: AUTOMATIZADO en Chromium (Playwright) con OpenAI/OpusClip simulados; la voz WebRTC se
-  prueba contra un par simulado, NO contra OpenAI real. Desplegada en Render: NO verificado.
+- JARVIS Web: AUTOMATIZADO en Chromium (Playwright) con Gemini/OpenAI/OpusClip simulados; la voz se prueba
+  contra un par WebRTC y un Gemini Live simulados, NO contra los reales. Desplegada en Render: NO verificado.
+- Gemini/Llama: contrato tomado del SDK oficial `@google/genai` 2.31.0 y de la API Chat Completions;
+  NUNCA probado con claves reales. La app Android usa Gemini para chat, fotos y dictado (vía servidor),
+  pero su voz en vivo sigue siendo OpenAI Realtime: sin clave de OpenAI cae a la voz local del teléfono.
 - Versiones de AndroidX/Compose resueltas por CI; `voice/wakeword` (variante `sherpa`) sin compilar
   (el AAR no está en el repositorio).
 

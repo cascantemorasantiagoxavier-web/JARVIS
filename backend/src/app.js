@@ -13,6 +13,9 @@ import { createSafePageTransport } from './http/safeFetch.js';
 import { apiRouter, healthRouter, MEDIA_ROUTES } from './routes/index.js';
 import { BusinessSearchService } from './services/business/businessService.js';
 import { createThrottle, NominatimClient, OverpassClient } from './services/business/osmClients.js';
+import { CompatClient } from './services/ai/compat.js';
+import { GeminiClient } from './services/ai/gemini.js';
+import { GeminiLiveService } from './services/ai/live.js';
 import { ChatService } from './services/openai/chat.js';
 import { MediaService } from './services/openai/media.js';
 import { GooglePlacesClient } from './services/business/googlePlaces.js';
@@ -28,8 +31,11 @@ export function createServices(config, logger, overrides = {}) {
     createHttpClient({ fetchImpl: overrides.fetchImpl, timeoutMs: config.outboundTimeoutMs, userAgent: userAgent(config), logger });
   const usage = overrides.usage ?? new UsageTracker();
   const realtime = new RealtimeService({ config, http, logger, usage });
-  const chat = new ChatService({ config, http, logger, usage });
-  const media = new MediaService({ config, http, logger, usage });
+  const gemini = new GeminiClient({ config, http });
+  const llama = new CompatClient({ config, http });
+  const chat = new ChatService({ config, http, logger, usage, gemini, llama });
+  const media = new MediaService({ config, http, logger, usage, gemini, llama });
+  const live = new GeminiLiveService({ config, gemini, usage, logger });
   const trade = new ComtradeService({ config, http, usage });
   const clips = new OpusClipService({ config, http, usage });
   const googlePlaces = config.google.mapsKey ? new GooglePlacesClient({ config, http, usage }) : null;
@@ -45,11 +51,16 @@ export function createServices(config, logger, overrides = {}) {
     logger,
     config,
   });
-  return { http, usage, realtime, chat, media, trade, clips, webSearch, pageFetcher, business };
+  return { http, usage, realtime, live, chat, media, trade, clips, webSearch, pageFetcher, business };
 }
 
 /** Página web de JARVIS (HTML/CSS/JS sin dependencias) que usa este mismo servidor. */
 export const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+
+function geminiWs(config) {
+  const u = new URL(config.gemini.baseUrl);
+  return `${u.protocol === 'http:' ? 'ws:' : 'wss:'}//${u.host}`;
+}
 
 export function createApp(config, logger, overrides = {}) {
   const services = createServices(config, logger, overrides);
@@ -60,8 +71,9 @@ export function createApp(config, logger, overrides = {}) {
     helmet({
       contentSecurityPolicy: {
         directives: {
-          // La web solo habla con este servidor y con Open-Meteo (clima, sin clave).
-          'connect-src': ["'self'", 'https://api.open-meteo.com', 'https://geocoding-api.open-meteo.com'],
+          // La web solo habla con este servidor, con Open-Meteo (clima, sin clave) y, para la voz de
+          // Gemini, con su WebSocket (con un token efímero; la clave nunca llega al navegador).
+          'connect-src': ["'self'", 'https://api.open-meteo.com', 'https://geocoding-api.open-meteo.com', geminiWs(config)],
           // Vistas previas de clips (almacenamiento de OpusClip) y audio de la voz (WebRTC).
           'media-src': ["'self'", 'https:', 'blob:'],
           'img-src': ["'self'", 'data:'],

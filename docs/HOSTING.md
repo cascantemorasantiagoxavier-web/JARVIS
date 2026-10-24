@@ -79,9 +79,9 @@ curl https://jarvis.tudominio.com/health
 
 ### Render (archivo `render.yaml` incluido)
 1. Sube el repositorio a GitHub y, en Render, **New → Blueprint** → elige el repositorio y la rama.
-2. Render lee `render.yaml` y pide los valores marcados `sync: false`: `OPENAI_API_KEY`,
-   `UN_COMTRADE_API_KEY`, `GOOGLE_MAPS_API_KEY`, `OPUSCLIP_API_KEY`, `TAVILY_API_KEY` (opcional) y
-   `OSM_CONTACT` (tu correo).
+2. Render lee `render.yaml` y pide los valores marcados `sync: false`: `GEMINI_API_KEY` (el cerebro),
+   `OSM_CONTACT` (tu correo) y, si los tienes, `LLAMA_API_KEY`, `OPENAI_API_KEY`, `UN_COMTRADE_API_KEY`,
+   `GOOGLE_MAPS_API_KEY`, `OPUSCLIP_API_KEY`, `TAVILY_API_KEY` y `BRAVE_API_KEY`. Deja vacías las que no uses.
    Si ya tienes un servicio con esas claves, cópialas desde su pestaña **Environment**.
 3. `JARVIS_CLIENT_TOKEN` lo genera Render: cópialo de **Environment** a la app (Ajustes → Servidor),
    junto con la URL `https://<servicio>.onrender.com`.

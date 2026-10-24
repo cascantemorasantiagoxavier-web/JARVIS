@@ -20,13 +20,19 @@ services:
         value: "true"
       - key: JARVIS_CLIENT_TOKEN
         generateValue: true
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY # cerebro de JARVIS (Google AI Studio)
+        sync: false
+      - key: LLAMA_API_KEY # opcional: respaldo con Llama (Groq por defecto)
+        sync: false
+      - key: OPENAI_API_KEY # opcional
         sync: false
       - key: UN_COMTRADE_API_KEY
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false
       - key: TAVILY_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
         sync: false
       - key: OPUSCLIP_API_KEY
         sync: false

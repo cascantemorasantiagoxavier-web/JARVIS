@@ -46,6 +46,9 @@ const BUSINESS = {
 const CLIP = { number: 1, clipId: 'c1', curationId: 'cur1', projectId: 'P123', title: 'Mejor momento', durationSec: 42, score: 91, previewUrl: null, exportUrl: 'https://cdn.example.org/c1.mp4' };
 
 let srv;
+let gsrv; // servidor con Gemini como único proveedor (sin clave de OpenAI)
+const geminiQueue = [];
+const geminiBodies = [];
 let browser;
 const skip = !chromium && 'playwright no está instalado';
 
@@ -63,6 +66,16 @@ before(async () => {
     }],
   ]);
   srv = await startServer({ overrides: { fetchImpl } });
+  const geminiFetch = fakeFetch([
+    [(u) => /:generateContent$/.test(u), (_u, init) => {
+      geminiBodies.push(JSON.parse(init.body));
+      const next = geminiQueue.shift();
+      return json(200, { candidates: [{ content: { role: 'model', parts: next ?? [{ text: '(sin guion)' }] }, finishReason: 'STOP' }], modelVersion: 'gemini-e2e' });
+    }],
+    [(u) => u.includes('/v1beta/models?'), () => json(200, { models: [{ name: 'models/gemini-e2e-flash-native-audio', supportedGenerationMethods: ['bidiGenerateContent'] }] })],
+    [(u) => u.endsWith('/v1alpha/auth_tokens'), () => json(200, { name: 'auth_tokens/e2e-token' })],
+  ]);
+  gsrv = await startServer({ env: { OPENAI_API_KEY: '', GEMINI_API_KEY: 'test-gemini-key-e2e-0003' }, overrides: { fetchImpl: geminiFetch } });
   browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined,
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
@@ -72,9 +85,10 @@ before(async () => {
 after(async () => {
   await browser?.close();
   await srv?.close();
+  await gsrv?.close();
 });
 
-async function openPage({ viewport = { width: 1440, height: 900 }, token = TOKEN } = {}) {
+async function openPage({ viewport = { width: 1440, height: 900 }, token = TOKEN, server, beforeLoad } = {}) {
   const ctx = await browser.newContext({ viewport, locale: 'es-CR', timezoneId: 'America/Costa_Rica', permissions: ['microphone', 'geolocation'], geolocation: { latitude: 10.0, longitude: -84.1 } });
   const page = await ctx.newPage();
   const errors = [];
@@ -91,7 +105,8 @@ async function openPage({ viewport = { width: 1440, height: 900 }, token = TOKEN
     json: { total: 1, results: [BUSINESS], category: { label: 'Ferreterías' }, area: { name: 'Heredia' }, source: { license: 'ODbL — © colaboradores de OpenStreetMap' } },
   }));
   if (token) await page.addInitScript((t) => localStorage.setItem('jarvis.settings', JSON.stringify({ token: t })), token);
-  await page.goto(srv.base);
+  await beforeLoad?.(page); // p. ej. routeWebSocket: debe registrarse antes de cargar la página
+  await page.goto((server ?? srv).base);
   return { page, ctx, errors };
 }
 
@@ -445,3 +460,115 @@ test('app instalable y sin conexión: service worker, iconos y respuestas locale
   assert.deepEqual(errors.filter((e) => !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e)), []);
   await ctx.close();
 });
+
+test('Gemini: el chat usa Gemini con herramientas y reenvía su contenido con thoughtSignature', { skip }, async () => {
+  const { page, ctx, errors } = await openPage({ server: gsrv });
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'En línea');
+  geminiQueue.push(
+    [{ functionCall: { name: 'business_search', args: { category: 'ferreterías', location: 'Heredia' } }, thoughtSignature: 'SIG-E2E' }],
+    [{ text: 'Encontré **1 ferretería** en Heredia con Gemini.' }],
+  );
+  const before = geminiBodies.length;
+  await sendChat(page, 'Busca ferreterías en Heredia');
+  await page.waitForSelector('.biz-name');
+  assert.match(await page.textContent('.msg.jarvis:last-child'), /con Gemini/);
+  const second = geminiBodies[before + 1];
+  assert.deepEqual(second.contents.at(-2).parts[0].thoughtSignature, 'SIG-E2E', 'la firma de Gemini vuelve intacta');
+  const resp = second.contents.at(-1).parts[0].functionResponse;
+  assert.equal(resp.name, 'business_search');
+  assert.match(JSON.stringify(resp.response), /Ferretería El Clavo/);
+  await page.click('.module[data-panel="settings"]');
+  await page.waitForSelector('.feature-list');
+  const features = await page.textContent('.feature-list');
+  assert.match(features, /Chat con IAGemini/);
+  assert.match(features, /Voz en vivoGemini Live/);
+  assert.equal(await page.locator('select[name="geminiVoice"]').count(), 1, 'voces de Gemini en Ajustes');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Gemini Live: token efímero, audio PCM 16 kHz, herramienta por voz, audio de respuesta y colgado', { skip }, async () => {
+  const received = [];
+  let route;
+  let url = '';
+  const { page, ctx, errors } = await openPage({
+    server: gsrv,
+    // Un Gemini Live simulado: el navegador nunca llega al servidor real de Google.
+    beforeLoad: (p) => p.routeWebSocket(/generativelanguage\.googleapis\.com/, (ws) => {
+      route = ws;
+      url = ws.url();
+      ws.onMessage((m) => received.push(JSON.parse(typeof m === 'string' ? m : m.toString())));
+    }),
+  });
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'En línea');
+  const send = (m) => route.send(JSON.stringify(m));
+  await page.click('#talk');
+  await page.waitForFunction(() => document.getElementById('core-state').textContent === 'CONECTANDO');
+  await expectSoon(() => received.length > 0);
+  assert.match(url, /BidiGenerateContentConstrained\?access_token=auth_tokens%2Fe2e-token$/);
+  assert.equal(received[0].setup.model, 'models/gemini-e2e-flash-native-audio');
+  assert.ok(received[0].setup.tools[0].functionDeclarations.some((d) => d.name === 'end_conversation'));
+  send({ setupComplete: {} });
+  await page.waitForFunction(() => document.getElementById('core-state').textContent === 'ESCUCHANDO');
+  await expectSoon(() => received.some((m) => m.realtimeInput?.audio));
+  const audio = received.find((m) => m.realtimeInput?.audio).realtimeInput.audio;
+  assert.equal(audio.mimeType, 'audio/pcm;rate=16000');
+  assert.equal(Buffer.from(audio.data, 'base64').length, 3200, '100 ms de PCM de 16 bits a 16 kHz');
+
+  send({ serverContent: { inputTranscription: { text: '¿Qué hora es?' } } });
+  send({ toolCall: { functionCalls: [{ id: 't1', name: 'get_datetime', args: {} }] } });
+  await expectSoon(() => received.some((m) => m.toolResponse));
+  const tr = received.find((m) => m.toolResponse).toolResponse.functionResponses[0];
+  assert.equal(tr.id, 't1');
+  assert.equal(tr.name, 'get_datetime');
+  assert.equal(tr.response.ok, true);
+
+  const pcm = Buffer.alloc(24000 * 2 * 0.4); // 0,4 s de tono a 24 kHz
+  for (let i = 0; i < pcm.length / 2; i++) pcm.writeInt16LE(Math.round(Math.sin(i / 8) * 8000), i * 2);
+  send({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: pcm.toString('base64') } }] } } });
+  send({ serverContent: { outputTranscription: { text: 'Son las tres, ' } } });
+  send({ serverContent: { outputTranscription: { text: 'jefe.' } } });
+  await page.waitForFunction(() => document.getElementById('core-state').textContent === 'HABLANDO');
+  await shot(page, '12-gemini-live');
+  send({ serverContent: { turnComplete: true } });
+  await page.waitForFunction(() => document.getElementById('core-state').textContent === 'ESCUCHANDO', null, { timeout: 5_000 });
+  const texts = await page.$$eval('.msg', (ms) => ms.map((m) => m.textContent));
+  assert.ok(texts.some((t) => /TÚ · voz.*¿Qué hora es\?/.test(t)), 'transcripción del usuario');
+  assert.ok(texts.some((t) => /JARVIS · voz.*Son las tres, jefe\./.test(t)), 'transcripción de Gemini');
+
+  send({ toolCall: { functionCalls: [{ id: 't2', name: 'end_conversation', args: {} }] } });
+  await expectSoon(() => received.filter((m) => m.toolResponse).length === 2);
+  send({ serverContent: { turnComplete: true } });
+  await page.waitForFunction(() => document.getElementById('core-state').textContent === 'EN ESPERA', null, { timeout: 12_000 });
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Gemini: dictado en WAV transcrito por Gemini', { skip }, async () => {
+  const { page, ctx, errors } = await openPage({ server: gsrv });
+  await page.waitForFunction(() => document.getElementById('server-chip').textContent === 'En línea');
+  geminiQueue.push([{ text: 'Recordar llamar a Ana' }]);
+  const before = geminiBodies.length;
+  await page.click('#dictate');
+  await page.waitForSelector('#dictate[aria-pressed="true"]');
+  await page.waitForTimeout(1200);
+  await page.click('#dictate');
+  await page.waitForFunction(() => document.getElementById('input').value.length > 0, null, { timeout: 15_000 });
+  assert.equal(await page.inputValue('#input'), 'Recordar llamar a Ana');
+  const part = geminiBodies[before].contents[0].parts[0].inlineData;
+  assert.equal(part.mimeType, 'audio/wav');
+  const wav = Buffer.from(part.data, 'base64');
+  assert.equal(wav.toString('latin1', 0, 4), 'RIFF');
+  assert.equal(wav.readUInt32LE(24), 16000, 'WAV de 16 kHz');
+  assert.ok(wav.length > 16000, 'audio real del micrófono simulado');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+async function expectSoon(cond, ms = 10_000) {
+  const end = Date.now() + ms;
+  while (!cond()) {
+    if (Date.now() > end) throw new Error('condición no cumplida a tiempo');
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}

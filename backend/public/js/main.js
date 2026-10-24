@@ -3,7 +3,8 @@ import { api, ApiError, asset } from './api.js';
 import { Brain } from './brain.js';
 import { formatDateTime } from './dates.js';
 import { Globe } from './globe.js';
-import { imageToJpeg, Recorder, thumbnail } from './media.js';
+import { GEMINI_VOICES, GeminiVoice } from './gemini-live.js';
+import { imageToJpeg, Recorder, thumbnail, WavRecorder } from './media.js';
 import { Voice } from './realtime.js';
 import { chatLog, clipProjects, exportData, importData, memory, settings, tasks, wipeAll } from './store.js';
 import { persistableCards, ToolBox } from './tools.js';
@@ -23,7 +24,8 @@ const VOICEBAR_TEXT = {
 
 let toolbox;
 let brain;
-let voice;
+let voice; // voz activa: OpenAI Realtime o Gemini Live, según /health
+let voices = {};
 let globe;
 let health = null;
 let busy = false;
@@ -55,7 +57,9 @@ async function boot() {
   ]);
   toolbox = new ToolBox({ definitions: defs.tools, host: { confirm: confirmDialog, locate, endVoice: () => voice?.requestEnd(), notify: toast } });
   brain = new Brain({ toolbox, persona });
-  voice = new Voice({ toolbox, brain, onState: onVoiceState, onTranscript, onCards: (cards) => addCards(cards), onError: (m) => addSystem(m, true) });
+  const voiceOpts = { toolbox, brain, onState: onVoiceState, onTranscript, onCards: (cards) => addCards(cards), onError: (m) => addSystem(m, true) };
+  voices = { openai: new Voice(voiceOpts), gemini: new GeminiVoice(voiceOpts) };
+  voice = voices.openai;
   globe = new Globe($('globe'), globeData, {
     reduceMotion: reduceMotion(),
     level: () => voice.level(),
@@ -70,6 +74,19 @@ async function boot() {
   checkReminders();
   await checkServer();
   if (!settings.get().token && health) $('onboard').showModal();
+}
+
+/** Voz en vivo disponible: "gemini", "openai" o null (servidores anteriores solo informaban `realtime`). */
+function voiceProvider() {
+  const f = health?.features;
+  if (!f) return null;
+  return f.voice !== undefined ? f.voice : f.realtime ? 'openai' : null;
+}
+
+const PROVIDER_NAME = { gemini: 'Gemini', openai: 'OpenAI', llama: 'Llama' };
+function providerLabel(main, fallback = []) {
+  if (!main) return undefined;
+  return `${PROVIDER_NAME[main] ?? main}${fallback.length ? ` (respaldo: ${fallback.map((p) => PROVIDER_NAME[p] ?? p).join(', ')})` : ''}`;
 }
 
 function reduceMotion() {
@@ -193,6 +210,7 @@ async function checkServer() {
     clearTimeout(slow);
   }
   const f = health.features ?? {};
+  if (!voice?.active) voice = voices[voiceProvider()] ?? voices.openai;
   if (!settings.get().token) {
     chip.dataset.state = 'partial';
     chip.textContent = 'Falta token';
@@ -206,7 +224,7 @@ async function checkServer() {
     if (err.status === 401) toast(err.message);
     return;
   }
-  chip.dataset.state = f.chat && f.realtime ? 'ok' : 'partial';
+  chip.dataset.state = f.chat && voiceProvider() ? 'ok' : 'partial';
   chip.textContent = f.chat ? 'En línea' : 'En línea · sin IA';
 }
 
@@ -300,7 +318,7 @@ async function sendPhoto(question) {
   const photo = attachment;
   const task = $('attachment-task').value;
   if (health && !health.features?.vision) {
-    addSystem('El análisis de fotos no está configurado en el servidor (falta OPENAI_API_KEY).', true);
+    addSystem('El análisis de fotos no está configurado en el servidor (falta GEMINI_API_KEY en Render).', true);
     return;
   }
   busy = true;
@@ -358,10 +376,12 @@ async function toggleDictation() {
     }
     return;
   }
-  if (!Recorder.supported()) return addSystem('Este navegador no puede grabar audio.', true);
-  if (health && !health.features?.transcription) return addSystem('El dictado no está configurado en el servidor (falta OPENAI_API_KEY).', true);
+  // Gemini entiende WAV seguro; WebM/Opus (lo que graba Chrome) solo con OpenAI o Whisper.
+  const Rec = health?.features?.ai?.transcription === 'gemini' ? WavRecorder : Recorder;
+  if (!Rec.supported()) return addSystem('Este navegador no puede grabar audio.', true);
+  if (health && !health.features?.transcription) return addSystem('El dictado no está configurado en el servidor (falta GEMINI_API_KEY en Render).', true);
   if (voice?.active) return addSystem('Termina primero la conversación de voz.', true);
-  recorder = new Recorder({
+  recorder = new Rec({
     onTick: (sec) => ($('dictate-time').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`),
     onAutoStop: () => toggleDictation(),
   });
@@ -449,8 +469,8 @@ async function toggleVoice() {
     $('onboard').showModal();
     return;
   }
-  if (health && !health.features?.realtime) {
-    addSystem('La voz no está configurada en el servidor: falta OPENAI_API_KEY en Render.', true);
+  if (health && !voiceProvider()) {
+    addSystem('La voz en vivo no está configurada en el servidor: falta GEMINI_API_KEY (u OPENAI_API_KEY) en Render.', true);
     return;
   }
   speechSynthesis?.cancel?.();
@@ -739,8 +759,10 @@ function renderSettings() {
     el('p', { class: 'muted small' }, 'El token se guarda solo en este navegador. Las claves de OpenAI, Google y OpusClip se quedan en el servidor (Render → Environment).'),
     health
       ? el('ul', { class: 'feature-list' },
-        ...feature('Chat con IA', f.chat),
-        ...feature('Voz en tiempo real', f.realtime, f.realtimeModel),
+        ...feature('Chat con IA', f.chat, providerLabel(f.ai?.chat, f.ai?.fallback)),
+        ...feature('Fotos', f.vision, providerLabel(f.ai?.vision)),
+        ...feature('Dictado', f.transcription, providerLabel(f.ai?.transcription)),
+        ...feature('Voz en vivo', voiceProvider(), voiceProvider() === 'gemini' ? 'Gemini Live' : f.realtimeModel),
         ...feature('Búsqueda web', f.webSearch?.length, (f.webSearch ?? []).join(', ')),
         ...feature('Negocios (OpenStreetMap)', f.business),
         ...feature('Comercio exterior (UN Comtrade)', f.trade),
@@ -766,9 +788,13 @@ function renderSettings() {
     usageBox,
 
     el('h3', {}, 'Voz y pantalla'),
-    el('label', { class: 'field' }, 'Voz de JARVIS (tiempo real)',
-      el('select', { name: 'voice', onChange: (e) => settings.update({ voice: e.target.value }) },
-        ...VOICES.map((v) => el('option', { value: v, selected: v === s.voice || null }, v)))),
+    voiceProvider() === 'gemini'
+      ? el('label', { class: 'field' }, 'Voz de JARVIS (Gemini Live)',
+        el('select', { name: 'geminiVoice', onChange: (e) => settings.update({ geminiVoice: e.target.value }) },
+          ...GEMINI_VOICES.map((v) => el('option', { value: v, selected: v === s.geminiVoice || null }, v))))
+      : el('label', { class: 'field' }, 'Voz de JARVIS (OpenAI en tiempo real)',
+        el('select', { name: 'voice', onChange: (e) => settings.update({ voice: e.target.value }) },
+          ...VOICES.map((v) => el('option', { value: v, selected: v === s.voice || null }, v)))),
     el('label', { class: 'field' }, 'Lugar del clima',
       el('input', { type: 'text', value: s.weatherPlace, maxlength: 80, onChange: (e) => { settings.update({ weatherPlace: e.target.value.trim() || 'San José, Costa Rica' }); refreshWeather(); } })),
     el('label', { class: 'check' },

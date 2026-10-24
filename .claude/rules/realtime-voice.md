@@ -1,4 +1,4 @@
-# Reglas: voz y OpenAI Realtime
+# Reglas: voz en vivo (Gemini Live y OpenAI Realtime)
 
 ## Contrato (GA, verificado contra los tipos del SDK oficial `openai` de npm 7.43.0)
 - Conexión WebRTC. Llamada: `POST /v1/realtime/calls` (multipart `sdp` + `session`, o SDP con
@@ -11,7 +11,19 @@
 - Detección de turnos: `semantic_vad` con `interrupt_response: true` (el usuario puede interrumpir).
 - Modelo por defecto `gpt-realtime-2.1-mini`; voz por defecto `cedar` (alternativa `marin`).
 
-## Modos de conexión
+## Gemini Live (voz de la web cuando hay `GEMINI_API_KEY`; contrato de `@google/genai` 2.31.0)
+- El navegador pide `POST /api/live/token` (instrucciones, voz, herramientas). El servidor crea un token
+  efímero (`POST v1alpha/auth_tokens`, `uses: 1`, 30 min, 2 min para conectar) con TODA la configuración
+  bloqueada en `bidiGenerateContentSetup` (sin `fieldMask`). La clave nunca llega al navegador.
+- WebSocket `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained?access_token=…`;
+  primer mensaje `{setup}`; esperar `setupComplete`.
+- Micrófono: AudioWorklet (`pcm-worklet.js`) → PCM 16 bits 16 kHz en bloques de 100 ms → `realtimeInput.audio`.
+  Respuesta: `serverContent.modelTurn.parts[].inlineData` PCM 24 kHz; `interrupted` corta el audio.
+- Herramientas: `toolCall.functionCalls[{id,name,args}]` → mismo ToolBox/confirmaciones → `toolResponse`
+  con TODAS las respuestas de la ronda; `toolCallCancellation` las descarta. No hace falta pedir respuesta.
+- Modelo: `GEMINI_LIVE_MODEL=auto` elige de `models.list` uno con `bidiGenerateContent` (prefiere audio nativo).
+
+## Modos de conexión (OpenAI Realtime)
 - `unified` (por defecto): el teléfono envía su oferta SDP al backend (`/api/realtime/call`), el
   backend la reenvía a OpenAI con la clave permanente y devuelve la respuesta SDP. El teléfono nunca
   ve credenciales de OpenAI.

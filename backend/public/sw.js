@@ -1,7 +1,7 @@
 // Service worker de JARVIS Web: permite instalarla como app, abrirla sin conexión y mostrar los avisos de
 // tareas en Android. Primero la red (siempre la versión más nueva); la copia local solo se usa sin conexión.
 // Nunca guarda ni intercepta /api ni /health: conversaciones, fotos y audio no pasan por esta caché.
-const CACHE = 'jarvis-web-v1';
+const CACHE = 'jarvis-web-v2';
 const SHELL = [
   '/',
   '/index.html',
@@ -11,8 +11,10 @@ const SHELL = [
   '/js/brain.js',
   '/js/calc.js',
   '/js/dates.js',
+  '/js/gemini-live.js',
   '/js/globe.js',
   '/js/media.js',
+  '/js/pcm-worklet.js',
   '/js/realtime.js',
   '/js/store.js',
   '/js/tools.js',

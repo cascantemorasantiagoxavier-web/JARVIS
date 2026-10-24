@@ -59,6 +59,7 @@ export const api = {
   clipsStatus: (id) => request('GET', `/api/clips/projects/${encodeURIComponent(id)}`),
   clipsPublish: (body) => request('POST', '/api/clips/publish', body),
   realtimeCall: (body) => request('POST', '/api/realtime/call', body, { timeoutMs: 30_000 }),
+  liveToken: (body) => request('POST', '/api/live/token', body, { timeoutMs: 30_000 }),
   realtimeHangup: (callId) => request('POST', `/api/realtime/call/${encodeURIComponent(callId)}/hangup`, {}),
 };
 

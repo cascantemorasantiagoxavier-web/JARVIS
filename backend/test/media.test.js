@@ -167,7 +167,7 @@ test('transcripción: multipart con archivo, modelo e idioma ISO-639-1', async (
   try {
     const r = await srv.call('POST', '/api/audio/transcribe', { audioBase64: m4a, mimeType: 'audio/mp4', language: 'es-CR' });
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual(r.body, { text: 'Llamar al contador mañana.', language: 'es', model: 'gpt-4o-mini-transcribe' });
+    assert.deepEqual(r.body, { text: 'Llamar al contador mañana.', language: 'es', model: 'gpt-4o-mini-transcribe', provider: 'openai' });
     const { init } = f.calls[0];
     assert.ok(init.body instanceof FormData);
     assert.equal(init.body.get('model'), 'gpt-4o-mini-transcribe');

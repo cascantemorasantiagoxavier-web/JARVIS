@@ -19,20 +19,21 @@ export const CallIdParams = z.object({ callId: z.string().regex(/^[A-Za-z0-9_-]{
 
 const jsonSchemaObject = z.record(z.string(), z.unknown());
 
+const ToolDefs = z
+  .array(
+    z.object({
+      name: z.string().regex(/^[a-zA-Z0-9_]{1,64}$/),
+      description: z.string().max(1200),
+      parameters: jsonSchemaObject,
+    }),
+  )
+  .max(64);
+
 export const ChatBody = z
   .object({
     instructions: z.string().max(20000).optional(),
     input: z.array(z.record(z.string(), z.unknown())).min(1).max(80),
-    tools: z
-      .array(
-        z.object({
-          name: z.string().regex(/^[a-zA-Z0-9_]{1,64}$/),
-          description: z.string().max(1200),
-          parameters: jsonSchemaObject,
-        }),
-      )
-      .max(64)
-      .optional(),
+    tools: ToolDefs.optional(),
     mode: z.enum(['FAST', 'BALANCED', 'DEEP']).optional(),
   })
   .refine((b) => JSON.stringify(b).length <= 400_000, { message: 'La conversación enviada es demasiado grande.' });
@@ -131,3 +132,11 @@ export const TranscribeBody = z.object({
     .transform((v) => v.slice(0, 2).toLowerCase())
     .optional(),
 });
+
+export const LiveTokenBody = z
+  .object({
+    instructions: z.string().max(12000).optional(),
+    voice: z.string().regex(/^[A-Za-z]{2,30}$/).optional(),
+    tools: ToolDefs.optional(),
+  })
+  .refine((b) => JSON.stringify(b).length <= 200_000, { message: 'La configuración de voz es demasiado grande.' });

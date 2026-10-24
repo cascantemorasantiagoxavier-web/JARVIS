@@ -57,6 +57,30 @@ const EnvSchema = z.object({
   VISION_MAX_REQUESTS_PER_DAY: int(100, 1, 100000),
   TRANSCRIBE_MAX_REQUESTS_PER_DAY: int(100, 1, 100000),
 
+  // Proveedores de IA para chat, fotos y dictado. "auto" = Gemini, OpenAI y Llama, en ese orden, los
+  // que tengan clave; si uno falla por cuota o caída se prueba el siguiente. O una lista: "gemini,llama".
+  AI_PROVIDERS: z.string().optional().default('auto'),
+  // Voz en vivo: "auto" = Gemini Live si hay clave de Gemini, si no OpenAI Realtime.
+  VOICE_PROVIDER: z.enum(['auto', 'gemini', 'openai', 'none']).optional().default('auto'),
+
+  // Gemini (Google AI Studio). La clave vive solo en el servidor.
+  GEMINI_API_KEY: optionalString,
+  GEMINI_BASE_URL: z.string().optional().default('https://generativelanguage.googleapis.com'),
+  GEMINI_MODEL: z.string().optional().default('gemini-flash-latest'),
+  GEMINI_VISION_MODEL: optionalString,
+  GEMINI_TRANSCRIBE_MODEL: optionalString,
+  // "auto": el servidor elige un modelo con voz en vivo de los disponibles para la clave.
+  GEMINI_LIVE_MODEL: z.string().optional().default('auto'),
+  GEMINI_VOICE: z.string().regex(/^[A-Za-z]{2,30}$/).optional().default('Charon'),
+
+  // Llama a través de un proveedor compatible con la API de OpenAI (Groq por defecto).
+  // Modelos "auto": se elige uno de la lista del proveedor; "none" desactiva esa función.
+  LLAMA_API_KEY: optionalString,
+  LLAMA_BASE_URL: z.string().optional().default('https://api.groq.com/openai/v1'),
+  LLAMA_MODEL: z.string().optional().default('auto'),
+  LLAMA_VISION_MODEL: z.string().optional().default('auto'),
+  LLAMA_TRANSCRIBE_MODEL: z.string().optional().default('auto'),
+
   SEARCH_PROVIDERS: z.string().optional().default('auto'),
   SEARXNG_URL: optionalString,
   BRAVE_API_KEY: optionalString,
@@ -105,6 +129,17 @@ export function loadConfig(env = process.env) {
     .filter(Boolean);
   if (!allowedModels.includes(e.OPENAI_REALTIME_MODEL)) allowedModels.unshift(e.OPENAI_REALTIME_MODEL);
 
+  const keys = { gemini: e.GEMINI_API_KEY, openai: e.OPENAI_API_KEY, llama: e.LLAMA_API_KEY };
+  const requested = e.AI_PROVIDERS === 'auto' ? ['gemini', 'openai', 'llama'] : e.AI_PROVIDERS.split(',').map((p) => p.trim().toLowerCase());
+  const unknown = requested.filter((p) => !(p in keys));
+  if (unknown.length) throw new ConfigError(`Configuración inválida:\n- AI_PROVIDERS: proveedor desconocido "${unknown.join(', ')}" (usa gemini, openai o llama).`);
+  const aiOrder = [...new Set(requested)].filter((p) => keys[p]);
+  const voice =
+    e.VOICE_PROVIDER === 'none' ? null
+      : e.VOICE_PROVIDER === 'auto' ? (keys.gemini ? 'gemini' : keys.openai ? 'openai' : null)
+        : keys[e.VOICE_PROVIDER] ? e.VOICE_PROVIDER : null;
+  const geminiModel = e.GEMINI_MODEL.replace(/^models\//, '');
+
   return Object.freeze({
     env: e.NODE_ENV,
     port: e.PORT,
@@ -137,6 +172,23 @@ export function loadConfig(env = process.env) {
         maxVisionPerDay: e.VISION_MAX_REQUESTS_PER_DAY,
         maxTranscriptionsPerDay: e.TRANSCRIBE_MAX_REQUESTS_PER_DAY,
       }),
+    }),
+    ai: Object.freeze({ order: Object.freeze(aiOrder), voice }),
+    gemini: Object.freeze({
+      apiKey: e.GEMINI_API_KEY,
+      baseUrl: e.GEMINI_BASE_URL.replace(/\/+$/, ''),
+      model: geminiModel,
+      visionModel: (e.GEMINI_VISION_MODEL ?? geminiModel).replace(/^models\//, ''),
+      transcribeModel: (e.GEMINI_TRANSCRIBE_MODEL ?? geminiModel).replace(/^models\//, ''),
+      liveModel: e.GEMINI_LIVE_MODEL,
+      voice: e.GEMINI_VOICE,
+    }),
+    llama: Object.freeze({
+      apiKey: e.LLAMA_API_KEY,
+      baseUrl: e.LLAMA_BASE_URL.replace(/\/+$/, ''),
+      model: e.LLAMA_MODEL,
+      visionModel: e.LLAMA_VISION_MODEL,
+      transcribeModel: e.LLAMA_TRANSCRIBE_MODEL,
     }),
     search: Object.freeze({
       providers: e.SEARCH_PROVIDERS,

@@ -20,8 +20,10 @@ Realtime, el chat con IA, la búsqueda web y la de negocios.
 
 ### Requisitos
 - Node.js **22.9 o superior** (`node -v`).
-- Una cuenta de OpenAI con saldo y una clave de API (platform.openai.com → *API keys*). Configura un
-  límite de gasto mensual en *Limits*.
+- Una clave de **Gemini** (Google AI Studio → https://aistudio.google.com/apikey). Es el cerebro de
+  JARVIS: chat con herramientas, fotos, dictado y voz en vivo. El nivel gratuito tiene límites por
+  minuto y por día; revisa las condiciones vigentes en AI Studio.
+- Opcional: una clave de **Llama** (Groq u otro proveedor compatible) como respaldo, y/o de OpenAI.
 
 ### Pasos
 ```bash
@@ -36,7 +38,9 @@ Abre `backend/.env` con un editor y rellena:
 | Variable | Qué poner |
 |---|---|
 | `JARVIS_CLIENT_TOKEN` | El token que imprimió `gen-token`. Lo pondrás también en la app. |
-| `OPENAI_API_KEY` | Tu clave de OpenAI. **Solo aquí.** |
+| `GEMINI_API_KEY` | Tu clave de Gemini (Google AI Studio). **Solo aquí.** |
+| `LLAMA_API_KEY` | Opcional: respaldo si Gemini se queda sin cuota. Por defecto Groq; otro proveedor con `LLAMA_BASE_URL`. |
+| `OPENAI_API_KEY` | Opcional: si también quieres OpenAI (voz Realtime de la app Android). |
 | `OSM_CONTACT` | Tu correo o web (lo exige la política de uso de OpenStreetMap). |
 | `SEARXNG_URL` / `TAVILY_API_KEY` / `BRAVE_API_KEY` | Opcional: al menos uno para búsqueda web completa. Sin ninguno solo queda Wikipedia. |
 | `UN_COMTRADE_API_KEY` | Opcional: estadísticas oficiales de importación y exportación (UN Comtrade, gratis con cuota diaria). |
@@ -46,15 +50,17 @@ Abre `backend/.env` con un editor y rellena:
 Las demás APIs de Google Cloud (BigQuery, Cloud Storage, Logging, Monitoring, Calendar con clave
 simple…) no se usan: JARVIS no las necesita. Ver `../JARVIS-KB/07-RESEARCH/apis-del-usuario.md`.
 
-El resto tiene valores por defecto razonables (modelo `gpt-realtime-2.1-mini`, voz `cedar`, límites
-de 20 sesiones de voz por hora y 60 por día).
+El resto tiene valores por defecto razonables: Gemini `gemini-flash-latest` (el Flash más reciente),
+voz en vivo elegida automáticamente entre los modelos de tu clave (`GEMINI_LIVE_MODEL=auto`), voz
+`Charon`, y límites de 20 sesiones de voz por hora y 60 por día. Orden de proveedores: `AI_PROVIDERS`.
 
 ```bash
 npm start
 curl http://localhost:8787/health
 ```
 
-`/health` debe responder `"status":"ok"` y `"realtime": true` si la clave de OpenAI está puesta.
+`/health` debe responder `"status":"ok"`, `"chat": true` y `"voice": "gemini"` si la clave de Gemini
+está puesta (en `features.ai` dice qué proveedor atiende el chat, las fotos y el dictado).
 
 ### Comprobar con datos reales (opcional)
 ```bash
