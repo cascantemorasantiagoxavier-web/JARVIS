@@ -1,4 +1,6 @@
-const fetch = global.fetch || require('node-fetch');
+// Resolved at call time so tests can stub global.fetch.
+const fetch = (...args) => (global.fetch || require('node-fetch'))(...args);
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS) || 20000;
 
 async function createChatCompletion(apiKey, model, messages) {
     if (!apiKey) {
@@ -20,7 +22,8 @@ async function createChatCompletion(apiKey, model, messages) {
             model: targetModel,
             messages: messages,
             temperature: 0.7
-        })
+        }),
+        signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS)
     });
 
     const responseText = await response.text();
@@ -72,7 +75,8 @@ async function createRealtimeSession(apiKey, model) {
                 body: JSON.stringify({
                     model: targetModel,
                     voice: 'alloy'
-                })
+                }),
+                signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS)
             }
         );
 

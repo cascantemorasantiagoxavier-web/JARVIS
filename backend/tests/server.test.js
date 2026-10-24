@@ -19,7 +19,8 @@ describe('JARVIS Backend API Tests', () => {
         expect(response.body.error).toBeDefined();
         expect(response.body.error.code).toBe('SERVER_CONFIG_ERROR');
 
-        process.env.OPENAI_API_KEY = originalKey;
+        // Assigning undefined would store the string "undefined" and trigger live calls later.
+        if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
     });
 
     test('POST /api/chat handles validation and missing payload', async () => {
