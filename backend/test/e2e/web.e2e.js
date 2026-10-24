@@ -483,6 +483,14 @@ test('Gemini: el chat usa Gemini con herramientas y reenvía su contenido con th
   assert.match(features, /Chat con IAGemini/);
   assert.match(features, /Voz en vivoGemini Live/);
   assert.equal(await page.locator('select[name="geminiVoice"]').count(), 1, 'voces de Gemini en Ajustes');
+  geminiQueue.push([{ text: 'OK' }], [{ functionCall: { name: 'get_datetime', args: {} } }]);
+  await page.click('button:has-text("Probar la IA")');
+  await page.waitForFunction(() => /Modelo de voz en vivo/.test(document.getElementById('panel-body').textContent));
+  const check = await page.textContent('#panel-body');
+  assert.match(check, /✓ Chat: Gemini/);
+  assert.match(check, /✓ Chat con herramientas: Gemini.*usó get_datetime/);
+  assert.match(check, /✓ Modelo de voz en vivo/);
+  await shot(page, '13-probar-ia');
   assert.deepEqual(errors, []);
   await ctx.close();
 });

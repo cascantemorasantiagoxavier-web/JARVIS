@@ -741,6 +741,7 @@ function renderSettings() {
   const s = settings.get();
   const f = health?.features ?? {};
   const usageBox = el('ul', { class: 'lines' });
+  const checkBox = el('ul', { class: 'lines' });
   const feature = (label, on, detail) => [el('span', {}, label), el('span', { class: on ? 'on' : 'off' }, on ? detail ?? 'activo' : 'no configurado')];
   return [
     el('h3', {}, 'Servidor'),
@@ -786,6 +787,28 @@ function renderSettings() {
       },
     }, 'Ver consumo de hoy'),
     usageBox,
+    el('button', {
+      class: 'chip', type: 'button',
+      onClick: async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        checkBox.replaceChildren(el('li', { class: 'muted' }, 'Probando la IA… (puede tardar si el servidor estaba dormido)'));
+        try {
+          const r = await api.aiCheck();
+          const label = { chat: 'Chat', chat_tools: 'Chat con herramientas', voice_model: 'Modelo de voz en vivo' };
+          checkBox.replaceChildren(...r.checks.map((c) => el('li', { class: c.ok ? '' : 'error' },
+            `${c.ok ? '✓' : '✗'} ${label[c.name] ?? c.name}: `,
+            c.ok
+              ? [c.provider && providerLabel(c.provider), c.model, c.toolCalls?.length && `usó ${c.toolCalls.join(', ')}`, `${(c.ms / 1000).toFixed(1)} s`].filter(Boolean).join(' · ')
+              : c.error)));
+        } catch (err) {
+          checkBox.replaceChildren(el('li', { class: 'error' }, err.message));
+        } finally {
+          btn.disabled = false;
+        }
+      },
+    }, 'Probar la IA'),
+    checkBox,
 
     el('h3', {}, 'Voz y pantalla'),
     voiceProvider() === 'gemini'

@@ -370,3 +370,80 @@ test('gemini: funciones sin argumentos van sin esquema', async () => {
   assert.deepEqual(d[0], { name: 'get_datetime', description: 'Hora' });
   assert.ok(d[1].parametersJsonSchema);
 });
+
+test('gemini: el historial no puede empezar por una respuesta de JARVIS', () => {
+  const c = toGeminiContents([
+    { role: 'assistant', content: 'Hola, jefe.' },
+    { role: 'user', content: '¿Qué hora es?' },
+  ]);
+  assert.deepEqual(c, [{ role: 'user', parts: [{ text: '¿Qué hora es?' }] }]);
+});
+
+test('diagnóstico /api/ai/check: chat, chat con las herramientas de la web y modelo de voz; errores con el motivo de Google', async () => {
+  const bodies = [];
+  let fail = false;
+  const f = fakeFetch([
+    [isGenerate, (_u, init) => {
+      bodies.push(JSON.parse(init.body));
+      if (fail) return json(400, { error: { code: 400, status: 'INVALID_ARGUMENT', message: 'API key expired. Please renew the API key.' } });
+      return bodies.length === 1 ? geminiReply([{ text: 'OK' }]) : geminiReply([{ functionCall: { name: 'get_datetime', args: {} } }]);
+    }],
+    [(u) => u.includes('/v1beta/models?'), () => json(200, { models: [{ name: 'models/gemini-x-native-audio', supportedGenerationMethods: ['bidiGenerateContent'] }] })],
+  ]);
+  const srv = await startServer({ env: onlyGemini, overrides: { fetchImpl: f, sleep: async () => {} } });
+  try {
+    assert.equal((await srv.call('GET', '/api/ai/check', undefined, { token: null })).status, 401, 'requiere el token');
+    const r = await srv.call('GET', '/api/ai/check');
+    assert.equal(r.status, 200, r.text);
+    const by = Object.fromEntries(r.body.checks.map((c) => [c.name, c]));
+    assert.equal(by.chat.ok, true);
+    assert.equal(by.chat.text, 'OK');
+    assert.equal(by.chat.provider, 'gemini');
+    assert.equal(by.chat_tools.ok, true);
+    assert.deepEqual(by.chat_tools.toolCalls, ['get_datetime']);
+    assert.equal(by.voice_model.model, 'gemini-x-native-audio');
+    const decls = bodies[1].tools[0].functionDeclarations;
+    assert.ok(decls.length >= 20, 'envía las herramientas reales de la web');
+    assert.ok(decls.some((d) => d.name === 'business_search' && d.parametersJsonSchema));
+    assert.deepEqual(Object.keys(decls.find((d) => d.name === 'get_datetime')), ['name', 'description']);
+    fail = true;
+    const bad = await srv.call('GET', '/api/ai/check');
+    assert.equal(bad.status, 200);
+    assert.equal(bad.body.checks[0].ok, false);
+    assert.match(bad.body.checks[0].error, /Detalle de Google: «API key expired/);
+    assert.doesNotMatch(bad.text, /test-gemini-key/);
+  } finally {
+    await srv.close();
+  }
+});
+
+test('gemini: con GEMINI_FALLBACK_MODELS=auto elige Flash disponibles para la clave', async () => {
+  const urls = [];
+  const f = fakeFetch([
+    [(u) => u.includes('/v1beta/models?'), () => json(200, {
+      models: [
+        { name: 'models/gemini-flash-latest', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/gemini-3.5-flash', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/gemini-3.6-flash-preview', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/gemini-flash-lite-latest', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/gemini-3.8-flash-tts', supportedGenerationMethods: ['generateContent'] },
+        { name: 'models/gemini-3.5-pro', supportedGenerationMethods: ['generateContent'] },
+      ],
+    })],
+    [isGenerate, (u) => {
+      const m = u.replace(/.*\/models\//, '').replace(':generateContent', '');
+      urls.push(m);
+      return m === 'gemini-3.5-flash' ? geminiReply([{ text: 'Respaldo OK' }]) : json(503, { error: { status: 'UNAVAILABLE', message: 'overloaded' } });
+    }],
+  ]);
+  const srv = await startServer({ env: onlyGemini, overrides: { fetchImpl: f, sleep: async () => {} } });
+  try {
+    const r = await srv.call('POST', '/api/chat', { input: [{ role: 'user', content: 'hola' }] });
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.body.text, 'Respaldo OK');
+    // Alias -latest primero, luego el Flash estable más nuevo; nunca preview, tts ni pro.
+    assert.deepEqual(urls, ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash']);
+  } finally {
+    await srv.close();
+  }
+});

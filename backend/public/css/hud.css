@@ -249,6 +249,8 @@ svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
 .panel-body h3 { margin: 6px 0 0; font: 500 0.75rem Orbitron, sans-serif; letter-spacing: 0.2em; color: var(--amber); text-transform: uppercase; }
 .panel-body p { margin: 0; }
 .panel-body > .chip { align-self: flex-start; }
+.panel-body .lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 0.92rem; }
+.panel-body .lines:empty { display: none; }
 .row-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line-soft); }
 .row-form .inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--text-dim); }

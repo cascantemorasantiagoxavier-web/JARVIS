@@ -55,7 +55,7 @@ export function healthRouter({ config, realtime, chat, webSearch, media, trade, 
   return r;
 }
 
-export function apiRouter({ realtime, live, chat, webSearch, business, pageFetcher, usage, media, trade, clips, config }) {
+export function apiRouter({ realtime, live, gemini, chat, webSearch, business, pageFetcher, usage, media, trade, clips, config }) {
   const r = Router();
 
   r.post('/realtime/session', validate(RealtimeSessionBody), wrap(async (req, res) => {
@@ -72,6 +72,12 @@ export function apiRouter({ realtime, live, chat, webSearch, business, pageFetch
 
   r.post('/realtime/call/:callId/hangup', validate(CallIdParams, 'params'), wrap(async (req, res) => {
     res.json(await realtime.hangup(req.valid.params.callId));
+  }));
+
+  // Diagnóstico de la IA con llamadas reales mínimas (cuenta como 2 peticiones de chat).
+  r.get('/ai/check', wrap(async (_req, res) => {
+    const { aiCheck } = await import('../services/ai/check.js');
+    res.json(await aiCheck({ config, chat, gemini }));
   }));
 
   r.get('/usage', (_req, res) => {

@@ -46,6 +46,7 @@ async function request(method, path, body, { auth = true, timeoutMs = 90_000 } =
 export const api = {
   health: () => request('GET', '/health', undefined, { auth: false }),
   usage: () => request('GET', '/api/usage'),
+  aiCheck: () => request('GET', '/api/ai/check', undefined, { timeoutMs: 200_000 }),
   chat: (body) => request('POST', '/api/chat', body, { timeoutMs: 130_000 }),
   webSearch: (body) => request('POST', '/api/web/search', body),
   fetchPage: (body) => request('POST', '/api/web/fetch', body),

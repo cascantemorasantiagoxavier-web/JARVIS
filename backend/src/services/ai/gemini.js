@@ -123,6 +123,9 @@ export function toGeminiContents(input) {
       push(item.role === 'assistant' ? 'model' : 'user', [{ text }]);
     }
   }
+  // Gemini espera que la conversación empiece por el usuario: el historial recortado puede empezar por
+  // una respuesta de JARVIS, que se descarta.
+  while (contents.length && contents[0].role === 'model') contents.shift();
   return contents.map(({ role, parts }) => ({ role, parts }));
 }
 
@@ -200,26 +203,52 @@ export class GeminiClient {
    * agotado no se reintenta, para no dejar a la persona esperando minutos.
    */
   async generate(model, body, opts = {}) {
-    const models = [model, ...this.cfg.fallbackModels.filter((m) => m !== model)];
-    let lastErr;
-    for (const m of models) {
+    const errors = [];
+    let models = [model];
+    for (let i = 0; i < models.length; i++) {
+      const m = models[i];
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const raw = await this.call(`models/${encodeURIComponent(m)}:generateContent`, { body, ...opts });
           if (m !== model) raw.modelVersion = raw.modelVersion ?? m;
           return raw;
         } catch (err) {
-          lastErr = err;
           if (err?.code === 'upstream_unavailable' && attempt === 0) {
             await this.sleep(1000);
             continue;
           }
+          errors.push(err);
           if (!['upstream_unavailable', 'upstream_model', 'upstream_quota'].includes(err?.code)) throw err;
           break;
         }
       }
+      if (i === 0) models = [model, ...(await this.fallbacks(model))];
     }
-    throw lastErr;
+    // El motivo más útil es el del modelo principal, no un «modelo inexistente» de un respaldo.
+    throw errors.find((e) => e.code !== 'upstream_model') ?? errors[0];
+  }
+
+  /** Modelos de respaldo: los configurados o, con "auto", dos Flash que la clave sí puede usar. */
+  async fallbacks(primary) {
+    const fixed = this.cfg.fallbackModels;
+    if (fixed !== 'auto') return fixed.filter((m) => m !== primary);
+    const known = ['gemini-flash-lite-latest', 'gemini-2.5-flash'];
+    let list = [];
+    try {
+      list = await this.models();
+    } catch {
+      return known.filter((m) => m !== primary);
+    }
+    const name = (m) => String(m.name ?? '').replace(/^models\//, '');
+    const version = (n) => Number(/gemini-(\d+(?:\.\d+)?)/.exec(n)?.[1] ?? 0);
+    const score = (n) => (/-latest$/.test(n) ? 100 : 0) + version(n) * 10 - (/preview/.test(n) ? 5 : 0);
+    const picked = list
+      .filter((m) => (m.supportedGenerationMethods ?? []).includes('generateContent'))
+      .map(name)
+      .filter((n) => /flash/.test(n) && !/image|tts|audio|live|embedding|exp|thinking|robotics/.test(n) && n !== primary)
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, 2);
+    return picked.length ? picked : known.filter((m) => m !== primary);
   }
 
   async chat({ instructions, input, tools = [], mode = 'BALANCED' }) {

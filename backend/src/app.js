@@ -51,7 +51,7 @@ export function createServices(config, logger, overrides = {}) {
     logger,
     config,
   });
-  return { http, usage, realtime, live, chat, media, trade, clips, webSearch, pageFetcher, business };
+  return { http, usage, realtime, live, gemini, chat, media, trade, clips, webSearch, pageFetcher, business };
 }
 
 /** Página web de JARVIS (HTML/CSS/JS sin dependencias) que usa este mismo servidor. */
