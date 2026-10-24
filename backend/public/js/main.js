@@ -756,7 +756,7 @@ function renderSettings() {
     el('div', { class: 'inline' },
       el('button', { class: 'chip primary', type: 'submit' }, 'Guardar y probar'),
       s.token ? el('button', { class: 'chip', type: 'button', onClick: () => { settings.update({ token: '' }); checkServer(); renderPanel('settings'); } }, 'Quitar token') : null)),
-    el('p', { class: 'muted small' }, 'El token se guarda solo en este navegador. Las claves de OpenAI, Google y OpusClip se quedan en el servidor (Render → Environment).'),
+    el('p', { class: 'muted small' }, 'El token se guarda solo en este navegador. Las claves de Gemini, Google y las demás se quedan en el servidor (Render → Environment).'),
     health
       ? el('ul', { class: 'feature-list' },
         ...feature('Chat con IA', f.chat, providerLabel(f.ai?.chat, f.ai?.fallback)),
