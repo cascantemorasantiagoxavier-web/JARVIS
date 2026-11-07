@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#05080F"/>
+      <stop offset="100%" stop-color="#0A1A2F"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#0077FF" stroke-width="1" opacity="0.15"/>
+    </pattern>
+  </defs>
+  <rect width="2560" height="1440" fill="url(#bg)"/>
+  <rect width="2560" height="1440" fill="url(#grid)"/>
+  <!-- Zona segura 1546x423 centrada: x 507-2053, y 508-931 -->
+  <circle cx="700" cy="720" r="170" fill="none" stroke="#00E5FF" stroke-width="8"/>
+  <circle cx="700" cy="720" r="125" fill="none" stroke="#0077FF" stroke-width="4" stroke-dasharray="12 10"/>
+  <circle cx="700" cy="720" r="70" fill="#00E5FF" opacity="0.9"/>
+  <text x="940" y="700" font-family="Arial Black, Arial, sans-serif" font-size="120" font-weight="900" fill="#E6F7FF">CONSTRUYENDO <tspan fill="#00E5FF">JARVIS</tspan></text>
+  <text x="944" y="800" font-family="Arial, sans-serif" font-size="52" fill="#9FDFFF">Mi asistente de IA, desde cero · Nuevo vídeo cada semana</text>
+</svg>
